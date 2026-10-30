@@ -38,28 +38,34 @@ module CuriosityReference {
         """
     }
 
-    instance i2cDriver: Samd21.I2cDriver base id 0x3030 {
+    @ Chip select of the F-RAM (software CS, PA18), opened as an output before spiDriver.configure()
+    instance csPA18: Samd21.GpioDriver base id FixedBaseIds.NO_DICTIONARY {
         phase Fpp.ToCpp.Phases.configComponents """
-        // Configure GPIO pins for SERCOM4
-        Samd21::PinMux::configure(PINMUX_PA12D_SERCOM4_PAD0);  // PA12 -> SERCOM4 PAD[0] (SDA)
-        Samd21::PinMux::configure(PINMUX_PA13D_SERCOM4_PAD1);  // PA13 -> SERCOM4 PAD[1] (SCL)
+        csPA18.configureOutput(
+            Samd21::GpioDriver::Group::PA,
+            Samd21::GpioDriver::Pin::PIN_18
+        );
+        """
+    }
 
-        i2cDriver.configure(
-        Samd21::SercomKind::SERCOM_4,
-        Samd21::I2cDriver::SclLowTimeout::DISABLED,
-        Samd21::I2cDriver::InactiveTimeout::DISABLED,
-        Samd21::I2cDriver::ClockStretchMode::ALWAYS,
-        Samd21::I2cDriver::Frequency::FAST_400KHZ,
-        // All four SMBus time-outs disabled for bringup: they are driven by
-        // GCLK_SERCOM_SLOW and set BUSERR when they trip during a frame (e.g. the
-        // host SCL-extend time-out fires while the host holds SCL low waiting on the
-        // RX DMA). Disabling them isolates a genuine protocol/electrical BUSERR from
-        // a time-out-induced one -- re-enable once reads work.
-        Samd21::I2cDriver::ClientSclLowTimeout::DISABLED,
-        Samd21::I2cDriver::HostSclLowTimeout::DISABLED,
-        Samd21::I2cDriver::SdaHold::HOLD_75_NS,
-        Samd21::I2cDriver::PinUsage::TWO_WIRE,
-        Samd21::I2cDriver::RunInStandby::ENABLED
+    @ SPI host on SERCOM1 for the F-RAM: MOSI PA16/PAD0, SCK PA17/PAD1, MISO PA19/PAD3, 4 MHz, mode 0, software CS
+    instance spiDriver: Samd21.SpiDriver base id 0x3030 {
+        phase Fpp.ToCpp.Phases.configComponents """
+        // Configure GPIO pins for SERCOM1
+        Samd21::PinMux::configure(PINMUX_PA16C_SERCOM1_PAD0);  // PA16 -> SERCOM1 PAD[0] (MOSI)
+        Samd21::PinMux::configure(PINMUX_PA17C_SERCOM1_PAD1);  // PA17 -> SERCOM1 PAD[1] (SCK)
+        Samd21::PinMux::configure(PINMUX_PA19C_SERCOM1_PAD3);  // PA19 -> SERCOM1 PAD[3] (MISO)
+
+        spiDriver.configure(
+        Samd21::SercomKind::SERCOM_1,
+        /* baud kHz */ 4000,
+        Samd21::SpiDriver::DataOrder::MSB,
+        Samd21::SpiDriver::ClockPolarity::IdleLow,
+        Samd21::SpiDriver::ClockPhase::SampleOnLeadingSck,
+        Samd21::SpiDriver::DataInPinout::PAD3,
+        Samd21::SpiDriver::DataOutPinout::MOSI_0_SCK_1_CS_2,
+        Samd21::SpiDriver::RunInStandby::ENABLED,
+        Samd21::SpiDriver::HardwareChipSelect::DISABLED
         );
         """
     }
@@ -159,28 +165,21 @@ module CuriosityReference {
     }
 
     # ----------------------------------------------------------------------
-    # I2C Components
+    # F-RAM Components (system test build for Fram.FramDriver)
     # ----------------------------------------------------------------------
 
-    @ Exercises the I2C bus. See CuriosityReference/I2cTester/docs/sdd.md.
-    instance i2cTester: CuriosityReference.I2cTester base id 0xCC00 {
-        @ startTasks, not configComponents: configure() logs InvalidConfig on a
-        @ bad argument, which needs the event and time ports already connected.
-        @
-        @ 0x50 is the 24Cxx serial-EEPROM address -- those parts are byte
-        @ addressed, so "write offset, then read" is a valid EEPROM read and an
-        @ EEPROM breakout is the cheapest target to hang on the bus. Nothing has
-        @ to be attached: with an empty bus the tester still drives the full
-        @ driver + DMA path and reports the NACK as I2cTester.WriteErrors.
-        @
-        @ Polling is OFF after configure(). Send I2CTESTER.SET_POLLING(true) to
-        @ start the 1 Hz read; a freshly reset board does not drive the bus.
+    @ UUT: generic F-RAM driver over the asynchronous SPI driver, slot 0
+    instance framDriver: Fram.FramDriver base id 0xDD00 {
+        @ startTasks runs after configComponents has configured spiDriver; RDID then RDSR, once
         phase Fpp.ToCpp.Phases.startTasks """
-        i2cTester.configure(
-        /* i2c address */ 0x50,
-        /* reg offset  */ 0x00,
-        /* read length */ 4
-        );
+        framDriver.startup();
         """
     }
+
+    @ Harness: drives framDriver.read/write on two client indices from ground commands
+    instance framTester: CuriosityReference.FramTester base id 0xCC00
+
+    @ Pass-through clients, one per index (FPP match rule: separate instance per index of a matched array)
+    instance framClient0: CuriosityReference.FramClient base id FixedBaseIds.NO_DICTIONARY
+    instance framClient1: CuriosityReference.FramClient base id FixedBaseIds.NO_DICTIONARY
 }

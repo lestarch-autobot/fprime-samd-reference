@@ -12,7 +12,7 @@ enum FramerConfig {
     //! Maximum size for a single transmit buffer (bytes)
     //! Buffer contains: frame header + multiple accumulated ComBuffers + frame trailer
     //! Larger buffers allow more packet accumulation before flush
-    FRAMER_TX_BUFFER_SIZE = 128,
+    FRAMER_TX_BUFFER_SIZE = 256,
 
     //! Per-APID Space Packet sequence count slots for Samd21::TmFramer. Kept at
     //! fprime-samd's default; see the full rationale in

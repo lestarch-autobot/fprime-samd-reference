@@ -7,3 +7,6 @@
 [submodule "fprime-samd"]
 	path = lib/fprime-samd
 	url = https://github.com/fprime-community/fprime-samd.git
+[submodule "lib/fprime-devices"]
+	path = lib/fprime-devices
+	url = https://github.com/fprime-community/fprime-devices.git

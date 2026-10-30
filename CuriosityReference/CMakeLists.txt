@@ -22,7 +22,8 @@
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/FrameworkHealth/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/GpioOut/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/GpioIn/")
-add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/I2cTester/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/FramTester/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/FramClient/")
 
 # Add custom components to this specific deployment here
 # add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/MyComponent/")
@@ -72,6 +73,7 @@ target_link_libraries("${FPRIME_CURRENT_MODULE}" PRIVATE
     fprime-samd_Drv_RtcDriver
     fprime-samd_Drv_DmaDriver
     fprime-samd_Drv_GpioDriver
+    fprime-samd_Drv_SpiDriver
     fprime-samd_Drv_Types
     -Wl,--no-whole-archive
 )

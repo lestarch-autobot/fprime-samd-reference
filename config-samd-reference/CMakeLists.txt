@@ -42,5 +42,6 @@ register_fprime_config(
         "${CMAKE_CURRENT_LIST_DIR}/StaticMemoryConfig.hpp"
         # --- overrides lib/fprime-samd/default/samd-config ---
         ${SAMD_FRAMER_CFG_OVERRIDE}
+        "${CMAKE_CURRENT_LIST_DIR}/Samd21StaticTlmPacketizerConfig.fpp"
     INTERFACE
 )

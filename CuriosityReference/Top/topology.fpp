@@ -22,8 +22,8 @@ module CuriosityReference {
     enum DmaChannel : U8 {
         USART0_UPL_DWN_TX
         USART0_UPL_DWN_RX
-        SERCOM4_I2C_WRITE
-        SERCOM4_I2C_READ
+        SERCOM1_SPI_MOSI
+        SERCOM1_SPI_MISO
     }
 
     deployment topology Top {
@@ -43,7 +43,8 @@ module CuriosityReference {
         instance fwHealth
 
         instance comDriver
-        instance i2cDriver
+        instance spiDriver
+        instance csPA18
 
         instance downlink
         instance framer
@@ -55,7 +56,10 @@ module CuriosityReference {
         instance frameAccumulator
         instance dmaDriver
         instance fatalFramer
-        instance i2cTester
+        instance framDriver
+        instance framTester
+        instance framClient0
+        instance framClient1
 
         instance pinIn
         instance inPA23
@@ -66,30 +70,13 @@ module CuriosityReference {
 
         telemetry packets Main {
 
-            packet Error group 1 {
-                i2cDriver.BusErrorCount
+            packet Error id 0 group 1 {
                 framer.DroppedPackets
-                # Per-failure-mode I2C counters. Which one is climbing identifies
-                # the fault; see CuriosityReference/I2cTester/docs/sdd.md §3.6.
-                i2cTester.BusyRejects
-                i2cTester.AddressErrors
-                i2cTester.WriteErrors
-                i2cTester.ReadErrors
-                i2cTester.OpenErrors
-                i2cTester.OtherErrors
-                i2cTester.ShortReads
+                framDriver.RequestsRejected
+                framDriver.SpiErrors
             }
 
-            packet Tester group 0 {
-                i2cTester.ReadData0
-                i2cTester.ReadData1
-                i2cTester.ReadLength
-                i2cTester.TxnCount
-                i2cTester.TargetAddress
-                i2cTester.RegisterOffset
-            }
-
-            packet Health group 0 {
+            packet Health id 1 group 0 {
                 rateDriver.CycleOverrun
                 fwHealth.Counter
                 rg8Hz.CycleCount
@@ -100,11 +87,22 @@ module CuriosityReference {
                 comDriver.rxOverflows
                 comDriver.rxBytes
                 comDriver.txBytes
-                i2cDriver.BusState
-                i2cDriver.ClockHold
-                i2cDriver.ReceiveNotAcknowledged
-                i2cDriver.DeviceOnBus
-                i2cDriver.StallRecoveryCount
+            }
+
+            @ Scheduled at 1 Hz from rg1Hz (pktSendIn[2]); the UUT's standing state and counters plus the harness counters
+            packet Fram id 2 group 1 {
+                framDriver.StartupState
+                framDriver.DeviceIdMatch
+                framDriver.StatusRegister
+                framDriver.ReadsCompleted
+                framDriver.WritesCompleted
+                framDriver.RequestsRejected
+                framDriver.SpiErrors
+                framer.DroppedPackets
+                framTester.BytesWritten
+                framTester.BytesVerified
+                framTester.Mismatches
+                framTester.RejectionsSeen
             }
 
         } omit {
@@ -157,7 +155,7 @@ module CuriosityReference {
         connections ActiveRateGroups {
             cycler.cycleOut -> comDriver.activeIn
             cycler.cycleOut -> rateDriver.activeIn
-            cycler.cycleOut -> i2cDriver.activeIn
+            cycler.cycleOut -> spiDriver.activeIn
         }
 
         connections RateGroups {
@@ -177,8 +175,8 @@ module CuriosityReference {
 
             # Rate group 2 -- 1 Hz
             rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup2] -> rg1Hz.CycleIn
-            rg1Hz.RateGroupMemberOut[0]                           -> i2cDriver.reportTelemetryIn
-            rg1Hz.RateGroupMemberOut[1]                           -> i2cTester.schedIn
+            # One Fram packet per 1 Hz tick (CuriosityReference otherwise sends packets only on tlm.SEND_PKT)
+            rg1Hz.RateGroupMemberOut[1]                           -> tlm.pktSendIn[2]
             # framer.schedIn sits in the LAST slot on purpose: it drains the com
             # packet queue, so it must run after every member that may have pushed
             # telemetry or an event into that queue this cycle.
@@ -243,28 +241,43 @@ module CuriosityReference {
             cmdDisp.seqCmdStatus    -> fprimeRouter.cmdResponseIn
         }
 
-        # DMA Engine drives the I2C transactions
-        connections I2c {
-            i2cDriver.dmaTransactionOut[Samd21.I2cDriver.DmaChannel.WRITE]      -> dmaDriver.sendTransactionIn[DmaChannel.SERCOM4_I2C_WRITE]
-            i2cDriver.dmaTransactionAbortOut[Samd21.I2cDriver.DmaChannel.WRITE] -> dmaDriver.abortTransactionIn[DmaChannel.SERCOM4_I2C_WRITE]
-            dmaDriver.transactionIsrOut[DmaChannel.SERCOM4_I2C_WRITE]           -> i2cDriver.dmaReplyIn[Samd21.I2cDriver.DmaChannel.WRITE]
+        # DMA Engine drives the SPI transfers
+        connections Spi {
+            spiDriver.dmaTransactionOut[Samd21.SpiDriver.DmaChannel.MOSI]      -> dmaDriver.sendTransactionIn[DmaChannel.SERCOM1_SPI_MOSI]
+            spiDriver.dmaTransactionAbortOut[Samd21.SpiDriver.DmaChannel.MOSI] -> dmaDriver.abortTransactionIn[DmaChannel.SERCOM1_SPI_MOSI]
+            dmaDriver.transactionIsrOut[DmaChannel.SERCOM1_SPI_MOSI]           -> spiDriver.dmaReplyIn[Samd21.SpiDriver.DmaChannel.MOSI]
 
-            i2cDriver.dmaTransactionOut[Samd21.I2cDriver.DmaChannel.READ]      -> dmaDriver.sendTransactionIn[DmaChannel.SERCOM4_I2C_READ]
-            i2cDriver.dmaTransactionAbortOut[Samd21.I2cDriver.DmaChannel.READ] -> dmaDriver.abortTransactionIn[DmaChannel.SERCOM4_I2C_READ]
-            dmaDriver.transactionIsrOut[DmaChannel.SERCOM4_I2C_READ]           -> i2cDriver.dmaReplyIn[Samd21.I2cDriver.DmaChannel.READ]
+            spiDriver.dmaTransactionOut[Samd21.SpiDriver.DmaChannel.MISO]      -> dmaDriver.sendTransactionIn[DmaChannel.SERCOM1_SPI_MISO]
+            spiDriver.dmaTransactionAbortOut[Samd21.SpiDriver.DmaChannel.MISO] -> dmaDriver.abortTransactionIn[DmaChannel.SERCOM1_SPI_MISO]
+            dmaDriver.transactionIsrOut[DmaChannel.SERCOM1_SPI_MISO]           -> spiDriver.dmaReplyIn[Samd21.SpiDriver.DmaChannel.MISO]
+
+            # Software chip select of slot 0 (the F-RAM)
+            spiDriver.chipSelectGpioOut[0] -> csPA18.gpioWrite
         }
 
-        @ Attach the I2C client to the bus driver. Both request/callback pairs are
-        @ left unindexed: I2cDriver.fpp declares `match writeComplete with write` and
-        @ `match writeReadComplete with writeRead`, so FPP guarantees a request and
-        @ its callback land on the same client port index. Both callbacks MUST be
-        @ connected -- the driver guards each with isConnected_* and otherwise drops
-        @ the completion silently, wedging the client mid-transaction forever.
-        connections I2cTester {
-            i2cTester.i2cWriteReadOut   -> i2cDriver.writeRead
-            i2cDriver.writeReadComplete -> i2cTester.writeReadCompleteIn
-            i2cTester.i2cWriteOut       -> i2cDriver.write
-            i2cDriver.writeComplete     -> i2cTester.writeCompleteIn
+        @ UUT on SPI slot 0; the harness on both client indices (FramDriver.fpp `match` keeps request and
+        @ completion on the same index)
+        connections Fram {
+            framDriver.spiWriteRead          -> spiDriver.SpiWriteRead[0]
+            spiDriver.SpiWriteReadComplete[0] -> framDriver.spiWriteReadComplete
+
+            framTester.read[0]               -> framClient0.readIn
+            framClient0.readOut              -> framDriver.read[0]
+            framDriver.readComplete[0]       -> framClient0.readCompleteIn
+            framClient0.readCompleteOut      -> framTester.readComplete[0]
+            framTester.write[0]              -> framClient0.writeIn
+            framClient0.writeOut             -> framDriver.write[0]
+            framDriver.writeComplete[0]      -> framClient0.writeCompleteIn
+            framClient0.writeCompleteOut     -> framTester.writeComplete[0]
+
+            framTester.read[1]               -> framClient1.readIn
+            framClient1.readOut              -> framDriver.read[1]
+            framDriver.readComplete[1]       -> framClient1.readCompleteIn
+            framClient1.readCompleteOut      -> framTester.readComplete[1]
+            framTester.write[1]              -> framClient1.writeIn
+            framClient1.writeOut             -> framDriver.write[1]
+            framDriver.writeComplete[1]      -> framClient1.writeCompleteIn
+            framClient1.writeCompleteOut     -> framTester.writeComplete[1]
         }
 
         connections Pins {
