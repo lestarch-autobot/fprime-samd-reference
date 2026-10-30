@@ -73,6 +73,8 @@ class Bench:
     def stop(self):
         self.sh("rec-stop"); self.sh("gds-stop")
     def restart_gds(self):
+        # stop right after a Fram packet has been logged so the recorder is not killed mid-packet (torn rows)
+        self.bracket(1); time.sleep(0.3)
         log("GDS restart after reset"); self.stop(); time.sleep(2); self.start()
     def cmd(self, mnemonic, args, done=None, timeout=20):
         """Send one command and wait for its OpCodeCompleted plus `done` = (eventName, textSub) completion."""

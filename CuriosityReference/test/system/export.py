@@ -102,6 +102,13 @@ def main(run=None, archive=None, record=None):
         counts[name] = len(data)
     counts["raw"] = {"event.log lines": ev_n, "channel.log lines": ch_n, "command.log lines": cm_n,
                      "event.log after dedup": len(ev_raw), "channel.log after dedup": len(ch_raw), "command.log after dedup": len(cm_raw)}
+    # torn packets: a recorder stopped mid-packet leaves fewer than the packet's channel rows at one (epoch, fsw)
+    by_t = {}
+    for r in channels:
+        if r["name"].split(".")[-2] in ("framDriver", "framTester"):
+            by_t.setdefault((r["epoch"], r["fsw"]), 0); by_t[(r["epoch"], r["fsw"])] += 1
+    full = max(set(by_t.values()), key=list(by_t.values()).count) if by_t else 0   # the packet's row count = the modal count
+    counts["torn fram packets"] = ["epoch %d fsw %.6f: %d of %d rows" % (k[0], k[1], n, full) for k, n in sorted(by_t.items()) if n < full]
     counts["clocks"] = {"fsw": "FSW time (TB_PROC_TIME) of the row; t = epoch*1e6 + fsw orders across reboots",
                         "sent": "ground wall clock of the command sender (not comparable with fsw)"}
     with open(os.path.join(record, "export-counts.json"), "w") as fh:

@@ -91,7 +91,8 @@ class Window:
         return len(self.ev(name, **kw))
     def precedes(self, a, b):
         ea, eb = self.ev(a[0], **a[1]), self.ev(b[0], **b[1])
-        return bool(ea) and bool(eb) and (ea[0]["t"], id(ea[0])) < (eb[0]["t"], id(eb[0])) and self.events.index(ea[0]) < self.events.index(eb[0])
+        # plan §3: `precedes` compares t, archive index on ties
+        return bool(ea) and bool(eb) and (ea[0]["t"], self.events.index(ea[0])) < (eb[0]["t"], self.events.index(eb[0]))
     def samples(self, name):
         return [c["value"] for c in self.channels if c["name"].endswith(name)]
     def first(self, name):
