@@ -3,7 +3,7 @@
 Files (flat in `~/fram-test/fvp/` on the Pi; `CuriosityReference.elf` + `TopTopologyDictionary.json` beside them):
 - `bench.sh` — bench control only (GDS start/stop, one recorder, command send, OpenOCD flash/reset).
 - `runner.py` — drives plan §3 in manifest order; `--run <id>`, `--faults sealed/faults.json`, `--tests`; sends the run-start
-  markers (plan §1), flashes the image at run start (`record/raw/flash.log`), aborts unless exactly one GDS and one recorder
+  markers (plan §1), flashes the manifest `.bin` at run start and reads it back (`record/raw/flash.log`: OpenOCD verify + image and read-back sha256), aborts unless exactly one GDS and one recorder
   are alive, brackets every window with two Fram telemetry samples, emits END markers in `finally`; counts timeouts per test.
 - `faults.py` — knob → parameter adjustment only (never printed; unknown knob = exit 2).
 - `export.py <run-dir>` — `record/raw/` → `record/{events,channels,commands}.jsonl` + `export-counts.json` (oracle §2).
