@@ -1,6 +1,6 @@
 """Fault knobs as harness configuration (fprime-system-test-harness §4).
 Reads sealed/faults.json ({"knobs": ["name", ...]} or {"knobs": {"name": {...}}}); exposes parameter
-adjustments only. Nothing here is ever logged or printed; an unknown knob name aborts the run silently (exit 2)."""
+adjustments only. Nothing here is ever logged or printed; an unknown knob name or a malformed file aborts the run (stderr message without the name, exit 2)."""
 import json, os, sys
 
 MENU = ("verify_wrong_seed", "corrupt_block", "final_wrong_image", "short_sweep", "busy_skip")
@@ -8,12 +8,21 @@ MENU = ("verify_wrong_seed", "corrupt_block", "final_wrong_image", "short_sweep"
 class Faults:
     def __init__(self, path):
         self._on = set()
-        if path and os.path.exists(path):
-            with open(path) as fh:
-                data = json.load(fh)
-            knobs = data.get("knobs", data) if isinstance(data, dict) else data
-            names = set(knobs.keys() if isinstance(knobs, dict) else knobs)
-            if names - set(MENU):
+        if path:
+            try:
+                with open(path) as fh:
+                    data = json.load(fh)
+                if isinstance(data, dict) and "faults" in data:      # seal.py draw: {"manifest_sha256", "faults": {test: knob}}
+                    names = set(data["faults"].values())
+                elif isinstance(data, dict) and "knobs" in data:     # dry-run tooling: {"knobs": [name, ...]}
+                    names = set(data["knobs"])
+                else:
+                    raise ValueError("faults file has neither 'faults' nor 'knobs'")
+                unknown = names - set(MENU)
+                if unknown:
+                    raise ValueError("%d unknown knob name(s)" % len(unknown))   # names are never printed
+            except (OSError, ValueError, AttributeError, TypeError) as e:
+                sys.stderr.write("faults: cannot use %s: %s\n" % (path, e))
                 sys.exit(2)
             self._on = names
 
