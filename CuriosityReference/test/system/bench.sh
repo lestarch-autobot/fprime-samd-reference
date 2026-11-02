@@ -24,7 +24,10 @@ case "$1" in
     sleep 3; roots "fprime-cli events" ;;            # prints the number of recorders (expect 1)
   rec-stop) pkill -f "fprime-cli events" ;;
   cmd) shift; timeout 20 $V/fprime-cli command-send "$@" $DICT $Z ;;
-  flash) eval timeout 120 $OOCD -c "\"program $2 verify reset exit\"" 2>&1 ;;
+  flash)  # flash the manifest .bin at 0x0 (verify), read the same range back and print both sha256 (run-for-record §3.1)
+    SZ=$(stat -c %s "$2"); RB=/tmp/rfr-readback.bin; rm -f $RB
+    eval timeout 180 $OOCD -c "\"program $2 0x00000000 verify\"" -c "\"dump_image $RB 0x00000000 $SZ\"" -c "\"reset run\"" -c "\"exit\"" 2>&1
+    echo "image sha256: $(sha256sum "$2")"; echo "readback sha256: $(sha256sum $RB 2>/dev/null)" ;;
   reset) eval timeout 60 $OOCD -c "\"init\"" -c "\"reset run\"" -c "\"exit\"" ;;
   *) echo "unknown: $1"; exit 2 ;;
 esac

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Drive the FramDriver system test plan on the bench (Pi side). Drives and records; never decides.
-usage: runner.py --out <run-dir> --run <run-id> [--elf <image.elf>] [--manifest-sha8 HEX8] [--seal-sha8 HEX8]
+usage: runner.py --out <run-dir> --run <run-id> [--image <Deployment>.bin] [--manifest-sha8 HEX8] [--seal-sha8 HEX8]
                  [--faults sealed/faults.json] [--tests L0-1,L2-1,...]
 Layout: <run-dir>/record/raw/ is the archive (GDS logs, the recorder's fprime-cli-*/ logs, cmd/ for the command
 sender's logs, flash.log); stdout of this script belongs in <run-dir>/runner/. Run-start markers (plan §1): the
@@ -99,12 +99,16 @@ class Bench:
         return self.cmd("framTester.REQUEST_RAW", [op, client, offset, length], ("framTester.RequestReturned", None))
     def reset(self):
         self.sh("reset", check=True)
-    def flash(self, elf):
-        r = self.sh("flash", elf)
+    def flash(self, image):
+        """Flash the manifest .bin, read it back; flash.log carries OpenOCD's verify and both sha256 values."""
+        r = self.sh("flash", image)
+        out = r.stdout + r.stderr
         with open(os.path.join(self.archive, "flash.log"), "w") as fh:
-            fh.write(r.stdout + r.stderr)
-        log("flash rc=%d verified=%s" % (r.returncode, "Verified OK" in r.stdout + r.stderr))
-        return r.returncode == 0 and "Verified OK" in r.stdout + r.stderr
+            fh.write(out)
+        sha = re.findall(r"^(?:image|readback) sha256: ([0-9a-f]{64})", out, re.M)
+        ok = r.returncode == 0 and "Verified OK" in out and len(sha) == 2 and sha[0] == sha[1]
+        log("flash rc=%d verified=%s readback==image=%s" % (r.returncode, "Verified OK" in out, len(sha) == 2 and sha[0] == sha[1]))
+        return ok
 
 def run_start_markers(b, run, msha8, ssha8):
     for key, value in (("manifest", int(msha8, 16)), ("seal", int(ssha8, 16)), ("run", zlib.crc32(run.encode()) & 0xFFFFFFFF)):
@@ -170,7 +174,7 @@ def run_test(tid, b, f):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True); ap.add_argument("--run", required=True)
-    ap.add_argument("--elf", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "CuriosityReference.elf"))
+    ap.add_argument("--image", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "CuriosityReference.elf.bin"))
     ap.add_argument("--manifest-sha8", default="00000000"); ap.add_argument("--seal-sha8", default="00000000")
     ap.add_argument("--faults", default=None); ap.add_argument("--tests", default=None)
     a = ap.parse_args()
@@ -180,7 +184,7 @@ def main():
     tests = a.tests.split(",") if a.tests else ORDER
     b = Bench(archive)
     log("run %s" % a.run)
-    if not b.flash(a.elf):   # every run starts from the flashed image (read-back verified) and a fresh boot
+    if not b.flash(a.image):   # every run starts from the flashed manifest image (read back, hashed) and a fresh boot
         raise SystemExit("flash failed")
     time.sleep(1.5)
     b.start()
