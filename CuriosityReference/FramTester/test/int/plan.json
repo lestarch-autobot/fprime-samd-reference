@@ -12,7 +12,7 @@
     "framTester.WriteDone": "FramTester write done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+)$",
     "framTester.VerifyDone": "FramTester verify done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+) mismatches (?P<mismatches>\\d+)$",
     "framTester.RawDone": "FramTester raw (?P<op>\\w+) done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+)$",
-    "framTester.UnexpectedCompletion": "FramTester unexpected completion on client (?P<client>\\d+): (?P<status>\\w+)$",
+    "framTester.UnexpectedCompletion": "FramTester unexpected completion on client (?P<client>\\d+): (?P<status>\\w+) \\((?P<cause>\\w+)\\)$",
     "framTester.BufferMismatch": "FramTester buffer mismatch on client (?P<client>\\d+)$",
     "framTester.CommandRejected": "FramTester command (?P<opcode>\\d+) rejected$",
     "framTester.SweepDone": "FramTester sweep (?P<kind>\\w+) done: (?P<chunks>\\d+) chunks, (?P<errors>\\d+) errors$",

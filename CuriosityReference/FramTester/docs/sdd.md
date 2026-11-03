@@ -10,8 +10,8 @@ commands and reports every return value and every completion as an event, so
 the GDS archive carries what the unit under test (UUT) did. It owns the request
 buffers, checks each completion against the buffer it was issued with, and
 compares read-back bytes with the plan's normative xorshift32 pattern. It models
-nothing and verifies nothing else: the verdicts belong to the Pi-side oracle
-(`CuriosityReference/test/system/`).
+nothing and verifies nothing else: the verdicts come from the generic tooling
+(`fth evaluate` / `fth audit`) replaying the record against `test/int/plan.json`.
 
 Like every component in this deployment it is passive, holds no dynamic memory
 and runs entirely in main context (command handlers, completion ports called
@@ -57,7 +57,7 @@ completion is always reported by an event.
 | 2 | `WriteDone(client, offset, length, status)` | activity low | WRITE_PATTERN / CHAIN write completion. |
 | 3 | `VerifyDone(client, offset, length, status, mismatches)` | activity low | READ_VERIFY / BURST / CHAIN read completion with the pattern comparison. |
 | 4 | `RawDone(op, client, offset, length, status)` | activity low | REQUEST_RAW completion. |
-| 5 | `UnexpectedCompletion(client, status)` | warning high | Completion with no request outstanding on that index. |
+| 5 | `UnexpectedCompletion(client, status, cause)` | warning high | Completion that cannot be matched to the request outstanding on that index: `cause` = NO_REQUEST (nothing outstanding) or WRONG_PORT (a completion of the other kind — the UUT completed on the wrong port). |
 | 6 | `BufferMismatch(client)` | warning high | Completion buffer pointer/size differs from the request's. |
 | 7 | `SweepDone(kind, chunks, errors)` | activity high | A SWEEP pass finished or stopped on a rejection. |
 | 8 | `DumpData(offset, length, data0, data1)` | activity low | DUMP bytes, MSB-first packed, zero-padded. |
@@ -108,8 +108,10 @@ unchanged. Channel payload 55 bytes; serialized packet (descriptor 1 + id 2 +
 time 11) 69 bytes; framed (F´ header 8 + CRC 4) 81 bytes — against
 `FRAMER_TX_BUFFER_SIZE = 256`.
 
-There are no unit tests for this component; it is verified on hardware by the
-system-test plan it serves.
+There are no native unit tests for this component yet (the MCU serial-number read
+in `FramTester.cpp` is unguarded for a host build — review iter-4 C11/D4, future-work);
+it is verified on hardware by the system-test plan it serves and by the plan's knob
+vectors, which exercise its error paths.
 
 ## Build record
 

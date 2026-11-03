@@ -158,11 +158,18 @@ module CuriosityReference {
             $status: Fram.Status @< Completion status
         ) severity activity low id 4 format "FramTester raw {} done client {} offset {} length {}: {}"
 
-        @ A completion arrived on a client index with no request outstanding
+        @ Why a completion could not be matched to the request outstanding on its client index
+        enum CompletionFault {
+            NO_REQUEST @< No request outstanding on that client index
+            WRONG_PORT @< The outstanding request is of the other kind (e.g. a read completion while a write is outstanding)
+        }
+
+        @ A completion arrived that cannot be matched to the request outstanding on its client index
         event UnexpectedCompletion(
             client: U8 @< Completion port index
             $status: Fram.Status @< Completion status
-        ) severity warning high id 5 format "FramTester unexpected completion on client {}: {}"
+            cause: CompletionFault @< NO_REQUEST or WRONG_PORT
+        ) severity warning high id 5 format "FramTester unexpected completion on client {}: {} ({})"
 
         @ The completion's buffer pointer or size differs from the one passed in the request
         event BufferMismatch(client: U8) severity warning high id 6 format "FramTester buffer mismatch on client {}"
