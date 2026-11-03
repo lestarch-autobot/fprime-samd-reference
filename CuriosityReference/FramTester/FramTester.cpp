@@ -61,7 +61,7 @@ U8 FramTester ::patternByte(U32 seed, U32 offset, U32 i) {
 bool FramTester ::checkCompletion(FwIndexType portNum, Fw::Buffer& buffer, const Fram::Status& status) {
     FW_ASSERT((portNum >= 0) && (portNum < CLIENTS), static_cast<FwAssertArgType>(portNum));
     if (this->m_activity[portNum] == FramTester_Activity::NONE) {
-        this->log_WARNING_HI_UnexpectedCompletion(static_cast<U8>(portNum), status);
+        this->log_WARNING_HI_UnexpectedCompletion(static_cast<U8>(portNum), status, FramTester_CompletionFault::NO_REQUEST);
         return false;
     }
     if ((buffer.getData() != this->m_buffer[portNum].getData()) ||
@@ -129,7 +129,7 @@ void FramTester ::readComplete_handler(FwIndexType portNum, U32 offset, Fw::Buff
             break;
         }
         default:
-            this->log_WARNING_HI_UnexpectedCompletion(client, status);
+            this->log_WARNING_HI_UnexpectedCompletion(client, status, FramTester_CompletionFault::WRONG_PORT);
             break;
     }
 }
@@ -168,7 +168,7 @@ void FramTester ::writeComplete_handler(FwIndexType portNum, U32 offset, Fw::Buf
             this->sweepNext();
             break;
         default:
-            this->log_WARNING_HI_UnexpectedCompletion(client, status);
+            this->log_WARNING_HI_UnexpectedCompletion(client, status, FramTester_CompletionFault::WRONG_PORT);
             break;
     }
 }
@@ -336,6 +336,8 @@ Fram::Status FramTester ::issue(Fram::Op op,
         if (this->m_activity[client] == activity) {
             this->m_activity[client] = FramTester_Activity::NONE;
         }
+        // A rejected first BURST read must not leave the second read armed for a later command's completion
+        this->m_burstSecond[client] = false;
     }
     return status;
 }
