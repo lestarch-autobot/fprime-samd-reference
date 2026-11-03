@@ -61,6 +61,30 @@ target_link_libraries("${FPRIME_CURRENT_MODULE}" PRIVATE
     fprime_samd_mcu
 )
 
+# Development trial only (never a flight/RfR build): gcov-instrument the UUT and its harness so an
+# on-target DUMP_COVERAGE can stream .gcda data. Needs GCC >= 11 (-fprofile-info-section) and the
+# .gcov_info / .gcov_counters regions of the fprime-samd samd21g17 linker script. Per-module flags,
+# not global; -lgcov supplies __gcov_merge_add and __gcov_info_to_gcda (freestanding objects only).
+option(FRAM_COVERAGE_TRIAL "gcov-instrument Fram.FramDriver and FramTester (development trial)" OFF)
+if(FRAM_COVERAGE_TRIAL)
+    # -fprofile-filter-files: count only functions defined in the two sources; without it every header
+    # inline instantiated in those TUs (Fw::Buffer, Fram::Status, enum wrappers...) gets counters too
+    # (102 functions / 6 KiB of counters + 2.4 KiB of records for ~30 functions of real UUT code).
+    set(FRAM_COVERAGE_FLAGS "-fprofile-arcs;-ftest-coverage;-fprofile-info-section;-fprofile-update=single;-fprofile-filter-files=Fram(Driver|Tester)\\.cpp$")
+    # Hand-written sources only: instrumenting the autocoded *Ac.cpp too overflows the 16 KiB RAM
+    # (gcov keeps 8-byte arc counters plus a per-function record in RAM for every instrumented function)
+    set_source_files_properties(
+        "${CMAKE_CURRENT_LIST_DIR}/../lib/fprime-devices/fprime-devices/Fram/Components/FramDriver/FramDriver.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/FramTester/FramTester.cpp"
+        TARGET_DIRECTORY fprime-devices_Fram_Components_FramDriver "${FPRIME_CURRENT_MODULE}_FramTester"
+        PROPERTIES COMPILE_OPTIONS "${FRAM_COVERAGE_FLAGS}")
+    target_compile_definitions("${FPRIME_CURRENT_MODULE}_FramTester" PRIVATE FRAM_COVERAGE_TRIAL=1)
+    target_link_libraries("${FPRIME_CURRENT_MODULE}" PRIVATE gcov)
+    # The link is -flto: LTRANS re-emits data with the link-time options, and without -fdata-sections
+    # there every __gcov0.* counter lands in plain .bss instead of the linker script's .gcov_counters
+    target_link_options("${FPRIME_CURRENT_MODULE}" PRIVATE -fdata-sections -ffunction-sections)
+endif()
+
 # Force strong ISR handlers from driver libraries to override weak aliases in vector table
 # The --whole-archive forces all objects in the driver libraries to be linked, ensuring
 # the strong RTC_Handler, DMAC_Handler and EIC_Handler override the weak aliases.
