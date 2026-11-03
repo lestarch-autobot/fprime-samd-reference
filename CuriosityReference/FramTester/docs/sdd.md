@@ -110,3 +110,17 @@ time 11) 69 bytes; framed (F´ header 8 + CRC 4) 81 bytes — against
 
 There are no unit tests for this component; it is verified on hardware by the
 system-test plan it serves.
+
+## Build record
+
+- **2026-11-02** — `fram-harness` build with `McuSerial0..3` added (this change).
+  Submodule pins: `lib/fprime` 7166cc78a2704354379db0856922462298183067
+  (`lestarch-autobot/fprime`, `samd-reference-kronos3-upstream-devel`), `lib/fprime-baremetal`
+  f0ab6dec81eb0cf2dc85c5f3af2ca5bead2146b8, `lib/fprime-samd` 056d4d39a965c9612e83e3096a0cf5bd692b37f5,
+  `lib/fprime-devices` d994623e6f677bcaf36770e451744f4abd12c623 (UUT, frozen). Toolchain: adafruit:samd 1.7.17
+  (arm-none-eabi-gcc 9-2019q4, CMSIS 5.4.0, CMSIS-Atmel 1.2.2) / fprime-tools 4.4.0 / fprime-fpp 3.4.0 /
+  cmake 3.26.0, python 3.12. Baseline (85f0fa4, same pins) reproduced byte-for-byte:
+  `CuriosityReference.elf.bin` sha256 af54922105553e201d9ff9763322c4886ccb8c06cf9c1c79d8f1a62029e128df,
+  text 52068 / data 172 / bss 4548. With McuSerial0..3:
+  sha256 6736537d0bdd0d0c19268b49d15af70bc9068b114ee80fca0fd3884c3e6b8ba7, text 52544 / data 172 / bss 4564
+  (+476 B flash, +16 B RAM); Fram packet payload 39 → 55 bytes.
