@@ -73,9 +73,9 @@ def test_L2_2(window, send, bench):
 def test_L2_3(window, send, bench):
     with window(50, 51):
         bracket(bench)
-        write(send, bench, 1, 0x010000, 32, 0x3003)
-        verify(send, bench, 1, 0x010000, 32, 0x3003)
-        verify(send, bench, 0, 0x010000, 32, 0x3003)    # the other client reads the same bytes
+        write(send, bench, 1, 0x010000, 32, 0x3005)
+        verify(send, bench, 1, 0x010000, 32, 0x3005)
+        verify(send, bench, 0, 0x010000, 32, 0x3005)    # the other client reads the same bytes
         bracket(bench)
 
 

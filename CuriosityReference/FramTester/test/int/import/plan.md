@@ -76,7 +76,7 @@ ID:        L2-3
 Title:     Completion returns on the requesting port index
 Covers:    REQ-FramDriver-004, REQ-FramDriver-011
 Setup:     L2-1 passed.
-Procedure: MARK(50); bracket (2 samples); WRITE_PATTERN(1, 0x010000, 32, 0x3003); READ_VERIFY(1, 0x010000, 32, 0x3003); READ_VERIFY(0, 0x010000, 32, 0x3003); bracket; MARK(51).
+Procedure: MARK(50); bracket (2 samples); WRITE_PATTERN(1, 0x010000, 32, 0x3005); READ_VERIFY(1, 0x010000, 32, 0x3005); READ_VERIFY(0, 0x010000, 32, 0x3005); bracket; MARK(51).
 Window:    Marker(id=50) … Marker(id=51)
 Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(client=1, offset=0x010000, length=32, status=OK) count == 1; event framTester.VerifyDone(client=1, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; event framTester.VerifyDone(client=0, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; event framTester.WriteDone(client=0) count == 0; delta(framDriver.ReadsCompleted) == 2; delta(framDriver.WritesCompleted) == 1.
 Evidence:  Completions carry client=1 for the client-1 requests and client=0 for the client-0 read of the same data.

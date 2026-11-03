@@ -58,6 +58,8 @@ def dump_image_matches_xorshift32(ctx, seed, base, chunk, count):
     rows = ctx.window.events("framTester.DumpData")
     bad, seen = [], {}
     for e in rows:
+        if e.args.get("offset") in seen:
+            return False, f"duplicate DumpData row for offset {e.args.get('offset')} (L{e.line})", [], False
         seen[e.args.get("offset")] = e
     missing = [base + chunk * k for k in range(count) if (base + chunk * k) not in seen]
     for k in range(count):
@@ -80,16 +82,6 @@ def dump_image_matches_xorshift32(ctx, seed, base, chunk, count):
 
 
 # ---- fault knobs (menu is generated from these: ``fth knobs-menu plan.json``) ----
-
-@helper("window_in_later_boot")
-def window_in_later_boot(ctx):
-    """The window's events lie in a boot epoch later than the record's first (a reset preceded it)."""
-    epochs = ctx.window.epochs
-    if not epochs:
-        return False, "no events in window", [], True
-    first = ctx.record.epochs[0] if ctx.record.epochs else 0
-    return min(epochs) > first, f"window epochs {epochs}; record first epoch {first}"
-
 
 # ---------------------------------------------------------------------------------------
 # Fault knobs. ``command_name`` is the spelling the stimulus passes to ``send()`` (the
@@ -137,9 +129,10 @@ def corrupt_block(test_id, command_name, args):
     if test_id in ("L2-1", "L2-2") and _is(command_name, "framTester.WRITE_PATTERN"):
         client, offset, length, seed = args
         return [(command_name, args), (command_name, [1, offset, length, (seed + 7) & 0xFFFFFFFF])]
-    if test_id == "L3-1" and _is(command_name, "framTester.MARK") and list(args) == [71]:
-        write = command_name[: -len("MARK")] + "WRITE_PATTERN"
-        return [(command_name, args), (write, [1, 0x020000, 64, 0x7007 + 7])]
+    if test_id == "L3-1" and _is(command_name, "framTester.WRITE_PATTERN"):
+        # inside W1, before the reset (the marker command is never handed to a knob — iter-4 ADV-E #1)
+        client, offset, length, seed = args
+        return [(command_name, args), (command_name, [1, offset, length, (seed + 7) & 0xFFFFFFFF])]
     return args
 
 

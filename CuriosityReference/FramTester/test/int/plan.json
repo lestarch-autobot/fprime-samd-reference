@@ -309,7 +309,8 @@
     "21. 2026-11-02 developer — REQ-023: new L3-2 = READ_VERIFY(0, 0x010000, 32, 0x3003) in MARK(74..75) after L3-1's reset, knob-free; reuses L3-1's reset (no second OpenOCD action) and the helper `window_in_later_boot` pins the window to a post-reset epoch. ~3 s of bench time.",
     "22. 2026-11-02 developer — fram-r2 predates L3-2/L5-4: both read UNVERIFIED (markers absent) on that record; the 12 original verdicts are unchanged and `vectors/fram-r2/expected-verdicts.json` carries the two new rows.",
     "23. 2026-11-02 developer — knob declarations fixed to the fixture's command spelling (`framTester.X`, as `send()` sees it) and scoped to the named test only; `busy_skip` rewrites BURST mode to `SEQUENTIAL` (the FPP enum; `AFTER_COMPLETION` does not exist); `corrupt_block` on L3-1 is issued after MARK(71), before the reset (rewrites the MARK(71) send into MARK(71) + WRITE_PATTERN(1, 0x020000, 64, 0x700E)), matching the retired runner.",
-    "24. 2026-11-02 developer — REQ-001/002 were covered by L2-1 and L2-5 only, whose knob sets both contain `verify_wrong_seed` (not disjoint; a verify_wrong_seed draw plus a corrupt_block/short_sweep draw could alter both). L2-3 (knob-free, WRITE_PATTERN then READ_VERIFY from both clients with mismatches=0) now also covers REQ-001 and REQ-002; no new predicates needed."
+    "24. 2026-11-02 developer — REQ-001/002 were covered by L2-1 and L2-5 only, whose knob sets both contain `verify_wrong_seed` (not disjoint; a verify_wrong_seed draw plus a corrupt_block/short_sweep draw could alter both). L2-3 (knob-free, WRITE_PATTERN then READ_VERIFY from both clients with mismatches=0) now also covers REQ-001 and REQ-002; no new predicates needed.",
+    "25. 2026-11-03 anchor (review iter-4, ADV-E) — corrupt_block's L3-1 branch keyed on the marker command, which the plugin never hands to a knob (a draw of corrupt_block on L3-1 planted nothing): re-keyed on L3-1's WRITE_PATTERN (corrupting write inserted inside W1, before the reset). L2-3's seed changed 0x3003 → 0x3005 so L2-3 and L3-2 no longer write the identical block (a no-op write could otherwise pass on a non-volatile part from run 2 on). Helper window_in_later_boot (unused since decision 21's L3-2 redesign) retired; dump_image_matches_xorshift32 fails on duplicate DumpData offsets. Takes effect at the next bench run; records before it show L2-3's old seed as a §2 observation."
   ],
   "tests": [
     {
@@ -521,9 +522,9 @@
       "procedure": [
         "MARK(50)",
         "bracket (2 samples)",
-        "WRITE_PATTERN(1, 0x010000, 32, 0x3003)",
-        "READ_VERIFY(1, 0x010000, 32, 0x3003)",
-        "READ_VERIFY(0, 0x010000, 32, 0x3003)",
+        "WRITE_PATTERN(1, 0x010000, 32, 0x3005)",
+        "READ_VERIFY(1, 0x010000, 32, 0x3005)",
+        "READ_VERIFY(0, 0x010000, 32, 0x3005)",
         "bracket",
         "MARK(51)"
       ],
@@ -875,7 +876,7 @@
         }
       ],
       "knobs": [],
-      "evidence": "WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) on the same block after it. Redundancy note (Captain's rule for REQ-023): L3-1 carries `corrupt_block`; L3-2 has no knobs, writes and verifies its own block (0x010000, seed 0x3003) around its own reset, so no other test's content (L2-5's SWEEP rewrites the whole array) can disturb it.",
+      "evidence": "WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) on the same block after it. Redundancy note (Captain's rule for REQ-023): L3-1 carries `corrupt_block`; L3-2 has no knobs, writes and verifies its own block (0x010000, seed 0x3003) around its own reset, so no other test's content (L2-5's SWEEP rewrites the whole array) can disturb it. Region map note (iter-4): 0x010000 is also written by L2-3 (client 1, seed 0x3005 — distinct from L3-2's 0x3003 so neither write can be a no-op for the other); L7-1's final image (0x3FF00..) overlaps L2-2's block at 0x3FFC0, rewritten each run — no verdict ripple, both verify their own write.",
       "risk": "bench note — after an OpenOCD reset with the GDS attached, command dispatch has been seen to stall (uplink artifact); if reproduced in the dry run the harness restarts the GDS between MARK(71) and MARK(72); the run's `raw/` then holds two GDS log directories, the exporter merges them in `recv` order, `export-counts.json` reports both, and the restart time is recorded in §8."
     },
     {
