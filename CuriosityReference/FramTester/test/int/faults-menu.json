@@ -1,0 +1,110 @@
+{
+  "max_count": 2,
+  "knobs": [
+    {
+      "name": "busy_skip",
+      "class": "stimulus",
+      "applies_to": [
+        "L5-1"
+      ],
+      "fails": {
+        "L5-1": [
+          "event framTester.RequestReturned(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1",
+          "event framDriver.RequestRejected(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1",
+          "delta(framDriver.RequestsRejected) == 1",
+          "event framTester.VerifyDone(client=1, offset=0x030000, length=64, status=OK) count == 1",
+          "delta(framDriver.ReadsCompleted) == 1"
+        ]
+      },
+      "mechanism": "harness BURST mode SEQUENTIAL issues the second read from inside the first read's completion instead of back-to-back (FPP enum FramTester.BurstMode: BACK_TO_BACK | SEQUENTIAL)",
+      "kind": "rewrite",
+      "ripples_to": {}
+    },
+    {
+      "name": "corrupt_block",
+      "class": "uut-state",
+      "applies_to": [
+        "L2-1",
+        "L2-2",
+        "L3-1"
+      ],
+      "fails": {
+        "L2-1": [
+          "event framTester.VerifyDone(client=0, offset=0, length=64, status=OK, mismatches=0) count == 1",
+          "delta(framDriver.WritesCompleted) == 1"
+        ],
+        "L2-2": [
+          "event framTester.VerifyDone(client=0, offset=0x3FFC0, length=64, status=OK, mismatches=0) count == 1",
+          "delta(framDriver.WritesCompleted) == 1"
+        ],
+        "L3-1": [
+          "event framTester.VerifyDone(client=0, offset=0x020000, length=64, status=OK, mismatches=0) count == 1"
+        ]
+      },
+      "mechanism": "harness overwrites the test's 64-byte block with seed+7 (WRITE_PATTERN from client 1) between the planned write and the verify \u2014 inside the window for L2-1/L2-2 (hence the WritesCompleted delta also fails); for L3-1 issued right after MARK(71), before the reset, i.e. in window R (outside W1/W2; no ripple to L7-1, whose region 0x3FF00.. is rewritten by L7-1 itself)",
+      "kind": "insert",
+      "ripples_to": {}
+    },
+    {
+      "name": "final_wrong_image",
+      "class": "uut-state",
+      "applies_to": [
+        "L7-1"
+      ],
+      "fails": {
+        "L7-1": [
+          "for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k to +7) \u2014 computed by the auditor from the plan's normative pattern generator quoted on the page, not from any harness output"
+        ]
+      },
+      "mechanism": "harness writes the final region with seed 0xF1F2 while the plan's dump expectation stays 0xF1F1 (device content disturbed; final-state row expected FAIL)",
+      "kind": "rewrite",
+      "ripples_to": {}
+    },
+    {
+      "name": "short_sweep",
+      "class": "stimulus",
+      "applies_to": [
+        "L2-5"
+      ],
+      "fails": {
+        "L2-5": [
+          "event framTester.SweepDone(kind=WRITE, chunks=4096, errors=0) count == 1",
+          "event framTester.SweepDone(kind=VERIFY, chunks=4096, errors=0) count == 1",
+          "delta(framDriver.WritesCompleted) == 4096",
+          "delta(framDriver.ReadsCompleted) == 4096",
+          "delta(framTester.BytesVerified) == 262144"
+        ]
+      },
+      "mechanism": "harness configures SWEEP over 4095 chunks and still expects the full device",
+      "kind": "rewrite",
+      "ripples_to": {}
+    },
+    {
+      "name": "verify_wrong_seed",
+      "class": "harness-expectation",
+      "applies_to": [
+        "L2-1",
+        "L2-5"
+      ],
+      "fails": {
+        "L2-1": [
+          "event framTester.VerifyDone(client=0, offset=0, length=64, status=OK, mismatches=0) count == 1"
+        ],
+        "L2-5": [
+          "event framTester.SweepDone(kind=VERIFY, chunks=4096, errors=0) count == 1"
+        ]
+      },
+      "mechanism": "harness verifies (READ_VERIFY / SWEEP verify pass) against seed+1 while the device holds the planned seed; BytesVerified counts bytes compared, so its delta predicates still hold",
+      "kind": "rewrite",
+      "ripples_to": {}
+    }
+  ],
+  "tests_covered": [
+    "L2-1",
+    "L2-2",
+    "L2-5",
+    "L3-1",
+    "L5-1",
+    "L7-1"
+  ]
+}
