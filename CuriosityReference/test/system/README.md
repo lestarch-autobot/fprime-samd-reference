@@ -1,19 +1,21 @@
-# FramDriver system-test harness (stage 2, Pi side)
+# FramDriver system test — bench helpers and the independent checker
 
-Files (flat in `~/fram-test/fvp/` on the Pi; `CuriosityReference.elf` + `TopTopologyDictionary.json` beside them):
-- `bench.sh` — bench control only (GDS start/stop, one recorder, command send, OpenOCD flash/reset).
-- `runner.py` — drives plan §3 in manifest order; `--run <id>`, `--faults sealed/faults.json`, `--tests`; sends the run-start
-  markers (plan §1), flashes the manifest `.bin` at run start and reads it back (`record/raw/flash.log`: OpenOCD verify + image and read-back sha256), aborts unless exactly one GDS and one recorder
-  are alive, brackets every window with two Fram telemetry samples, emits END markers in `finally`; counts timeouts per test.
-- `faults.py` — knob → parameter adjustment only (never printed; unknown knob = exit 2).
-- `export.py <run-dir>` — `record/raw/` → `record/{events,channels,commands}.jsonl` + `export-counts.json` (oracle §2).
-- `checker.py <run-dir>/record [verdicts.json] [--run id]` — builder's verdicts, keys = plan text verbatim (oracle §3).
+The stage-2 runner (`runner.py`, `faults.py`, `runall2.sh`) has been retired. Stimulus is now
+`CuriosityReference/FramTester/test/int/test_fram_plan.py` (pytest, stimulus only) driven by
+`fth run` from [`LeStarch/fprime-testing-harness`](https://github.com/LeStarch/fprime-testing-harness);
+the plan, its pass rules as predicate data, the fault knobs and the generated fault menu live in that
+repo under `pilot/fram/`. See `CuriosityReference/FramTester/test/int/README.md` for how to run live,
+dry and replay-only.
 
-Run layout: `<run>/record/raw/` (GDS logs, recorder `fprime-cli-*/`, `cmd/` sender logs, `flash.log`), `<run>/record/*.jsonl`,
-`<run>/runner/stdout.txt`, `<run>/sealed/faults.json` (knob runs), `<run>/verdicts.json`.
+What remains here:
+- `bench.sh` — bench control only (GDS start/stop, one recorder, command send, OpenOCD flash/reset) for
+  hand use on the Pi; `fth run` uses the equivalent lines from `pilot/fram/bench.json`.
+- `export.py <run-dir>` — `record/raw/` → `record/{events,channels,commands}.jsonl` + `export-counts.json`
+  (oracle §2); `fth export` is the maintained equivalent.
+- `checker.py <run-dir>/record [verdicts.json] [--run id]` — the builder's independent checker of the
+  12 approved tests (keys = plan text verbatim). The auditor runs it as `fth audit --independent` and
+  diffs it against the engine; it does not know the redundancy tests L3-2 / L5-4 added in the port.
 
-One full-plan run ≈ 11 min (L2-5 sweep ≈ 460 s, budget 1200 s). After the L3-1 reset the GDS is restarted (uplink stalls
-intermittently after an OpenOCD reset with the GDS attached); the exporter's reboot epochs keep the record ordered.
-
-Dry runs: `runner.py --out dry/<name> --run dry-<name> [--faults dry/<name>/sealed/faults.json]`, then `export.py dry/<name>`,
-then `checker.py dry/<name>/record`. Knob names appear only under `sealed/`.
+Run layout (unchanged): `<run>/record/raw/` (GDS logs, recorder `fprime-cli-*/`, `cmd/` sender logs,
+`flash.log`), `<run>/record/*.jsonl`, `<run>/runner/`, `<run>/sealed/faults.json` (knob runs),
+`<run>/auditor/`.
