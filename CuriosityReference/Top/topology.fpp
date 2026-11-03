@@ -89,7 +89,9 @@ module CuriosityReference {
                 comDriver.txBytes
             }
 
-            @ Scheduled at 1 Hz from rg1Hz (pktSendIn[2]); the UUT's standing state and counters plus the harness counters
+            @ Scheduled at 1 Hz from rg1Hz (pktSendIn[2]); the UUT's standing state and counters plus the harness
+            @ counters, then the board's provenance (the four SAMD21 serial-number words, appended last so the
+            @ offsets of the twelve original entries are unchanged)
             packet Fram id 2 group 1 {
                 framDriver.StartupState
                 framDriver.DeviceIdMatch
@@ -103,6 +105,10 @@ module CuriosityReference {
                 framTester.BytesVerified
                 framTester.Mismatches
                 framTester.RejectionsSeen
+                framTester.McuSerial0
+                framTester.McuSerial1
+                framTester.McuSerial2
+                framTester.McuSerial3
             }
 
         } omit {
@@ -175,6 +181,8 @@ module CuriosityReference {
 
             # Rate group 2 -- 1 Hz
             rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup2] -> rg1Hz.CycleIn
+            # The harness rewrites McuSerial0..3 first, so the Fram packet sent on the next index carries them
+            rg1Hz.RateGroupMemberOut[0]                           -> framTester.schedIn
             # One Fram packet per 1 Hz tick (CuriosityReference otherwise sends packets only on tlm.SEND_PKT)
             rg1Hz.RateGroupMemberOut[1]                           -> tlm.pktSendIn[2]
             # framer.schedIn sits in the LAST slot on purpose: it drains the com

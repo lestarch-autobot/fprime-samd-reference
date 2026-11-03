@@ -21,6 +21,10 @@ module CuriosityReference {
         @ Write completion, index = client the request was issued on
         sync input port writeComplete: [2] Fram.Complete
 
+        @ Rate-group tick (rg1Hz, before the Fram packet is sent): republishes the MCU serial-number words
+        @ so every Fram packet in the archive names the board it came from
+        sync input port schedIn: Svc.Sched
+
         # ------------------------------------------------------------------
         # Commands (one outstanding at a time; the response is sent when the
         # request call has returned -- the completion is reported by an event)
@@ -196,6 +200,20 @@ module CuriosityReference {
 
         @ Request calls that returned other than ACCEPTED
         telemetry RejectionsSeen: U32 id 3
+
+        @ SAMD21 128-bit unique serial number, word 0 (0x0080A00C; datasheet section 10.3.3). Constant per board;
+        @ rewritten on every schedIn tick. The F-RAM's own identity (RDID bytes) is the UUT's to report:
+        @ framDriver.DeviceIdMatch and framDriver.DeviceIdMismatch(deviceId)
+        telemetry McuSerial0: U32 id 4
+
+        @ SAMD21 serial number word 1 (0x0080A040)
+        telemetry McuSerial1: U32 id 5
+
+        @ SAMD21 serial number word 2 (0x0080A044)
+        telemetry McuSerial2: U32 id 6
+
+        @ SAMD21 serial number word 3 (0x0080A048)
+        telemetry McuSerial3: U32 id 7
 
         ###############################################################################
         # Standard AC Ports
