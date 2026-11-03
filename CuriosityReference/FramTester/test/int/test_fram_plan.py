@@ -109,9 +109,24 @@ def test_L3_1(window, send, bench):
 
 
 def test_L3_2(window, send, bench):
-    with window(74, 75):
+    # Self-contained retention (plan L3-2, bench-1 redesign): the block is written by this test, right
+    # before its own reset, and verified after it — no dependence on another test's device content
+    # (L2-5's SWEEP rewrites the whole array). Windows W1 = 74..75, R = 75..76 (reset inside),
+    # W2 = 76..77 share edges, so MARK(75)/MARK(76) are sent once each, as in test_L3_1.
+    with window(74, 77):
         bracket(bench)
-        verify(send, bench, 0, 0x010000, 32, 0x3003)    # block written by L2-3, before the L3-1 reset
+        write(send, bench, 0, 0x010000, 32, 0x3003)
+        send("tlm.SEND_PKT", [HEALTH_PACKET])
+        bracket(bench)
+        send(MARK, [75])
+        bench.wait(1.5)                    # framer flushes at the 1 Hz tick: let Marker(75) reach the archive
+        bench.reset()                      # action, not a command: OpenOCD `reset run` (no power cycle)
+        bench.wait_channel("framDriver.StartupState", "COMPLETE", timeout=10.0)
+        bench.wait(3.0)                    # uplink settles after the reset (plan risk note)
+        send(MARK, [76])
+        bracket(bench)
+        send("tlm.SEND_PKT", [HEALTH_PACKET])
+        verify(send, bench, 0, 0x010000, 32, 0x3003)
         bracket(bench)
 
 
