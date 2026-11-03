@@ -75,7 +75,7 @@
    "procedure": [
     "MARK(900)",
     "bracket (2 samples)",
-    "DUMP_COVERAGE(start, 2) for start = 0, 2, 4, ... 318 (160 commands; past the end only CoverageDumpDone repeats)",
+    "DUMP_COVERAGE(start, 2) for start = 0, 2, 4, ... 318 (160 commands + the 2 markers = 162 sent; past the end only CoverageDumpDone repeats)",
     "bracket (2 samples)",
     "MARK(901)"
    ],
@@ -89,7 +89,7 @@
    ],
    "complete": [
     "STD",
-    "commands_sent == 160"
+    "commands_sent == 162"
    ],
    "all_of": [
     "event framTester.CoverageObject(object=0) count == 1",
