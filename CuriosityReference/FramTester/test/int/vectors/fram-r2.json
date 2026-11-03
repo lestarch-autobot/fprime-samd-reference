@@ -1,0 +1,81 @@
+{
+  "run": "fram-r2",
+  "source": "fram-r2/runner/verdicts.json (reviewer checker, 2026-11-02)",
+  "tests": {
+    "L0-1": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L0-2": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L2-1": {
+      "verdict": "FAIL",
+      "failed": [
+        "event framTester.VerifyDone(client=0, offset=0, length=64, status=OK, mismatches=0) count == 1",
+        "delta(framDriver.WritesCompleted) == 1"
+      ]
+    },
+    "L2-2": {
+      "verdict": "FAIL",
+      "failed": [
+        "event framTester.VerifyDone(client=0, offset=0x3FFC0, length=64, status=OK, mismatches=0) count == 1",
+        "delta(framDriver.WritesCompleted) == 1"
+      ]
+    },
+    "L2-3": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L2-5": {
+      "verdict": "FAIL",
+      "failed": [
+        "event framTester.SweepDone(kind=VERIFY, chunks=4096, errors=0) count == 1"
+      ]
+    },
+    "L3-1": {
+      "verdict": "FAIL",
+      "failed": [
+        "event framTester.VerifyDone(client=0, offset=0x020000, length=64, status=OK, mismatches=0) count == 1"
+      ]
+    },
+    "L3-2": {
+      "verdict": "UNVERIFIED",
+      "failed": [
+        "both markers present",
+        "delta(framer.DroppedPackets) == 0",
+        "fram samples >= 2"
+      ]
+    },
+    "L5-1": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L5-4": {
+      "verdict": "UNVERIFIED",
+      "failed": [
+        "both markers present",
+        "delta(framer.DroppedPackets) == 0",
+        "fram samples >= 2"
+      ]
+    },
+    "L5-2": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L5-3": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L6-1": {
+      "verdict": "PASS",
+      "failed": []
+    },
+    "L7-1": {
+      "verdict": "PASS",
+      "failed": []
+    }
+  },
+  "note": "L3-2 and L5-4 (added 2026-11-02 for REQ-023/REQ-007 knob-disjoint redundancy) postdate this record: UNVERIFIED (markers 74/75, 82/83 absent)."
+}
