@@ -28,6 +28,8 @@ class FramTester final : public FramTesterComponentBase {
     static constexpr FwSizeType SERIAL_WORDS = 4;
     //! SAMD21 128-bit unique serial number: four non-contiguous words in the NVM (data sheet section 10.3.3)
     static constexpr U32 SERIAL_WORD_ADDRESS[SERIAL_WORDS] = {0x0080A00Cu, 0x0080A040u, 0x0080A044u, 0x0080A048u};
+    static constexpr FwSizeType COVERAGE_CHUNK = 32;  //!< gcda bytes per CoverageChunk event
+    static constexpr U8 COVERAGE_MAX_CHUNKS = 4;      //!< DUMP_COVERAGE count ceiling (framer: 2 x 128-byte buffers)
 
     // cppcheck-suppress noExplicitConstructor
     FramTester(const char* const compName);
@@ -52,6 +54,7 @@ class FramTester final : public FramTesterComponentBase {
     void CHAIN_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 client, U32 offset, U8 length, U32 seed) override;
     void SWEEP_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 seed, U16 chunks, U32 verifySeed) override;
     void DUMP_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 offset, U8 length) override;
+    void DUMP_COVERAGE_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U16 start, U8 count) override;
 
     // Helpers
     //! Common argument check for the pattern commands; sends the command response on failure
@@ -91,6 +94,29 @@ class FramTester final : public FramTesterComponentBase {
     U32 m_bytesVerified;
     U32 m_mismatches;
     U32 m_rejectionsSeen;
+
+    // Coverage trial: windowed walk of the gcda streams (state valid during one DUMP_COVERAGE only)
+    struct CoverageWalk {
+        U32 windowStart;  //!< First global chunk index to emit
+        U32 windowEnd;    //!< One past the last chunk index to emit
+        U32 chunk;        //!< Global chunk index of the chunk being filled
+        U32 totalBytes;   //!< gcda bytes walked so far, all objects
+        U32 objectBytes;  //!< gcda bytes walked so far, current object
+        U32 crc;          //!< Running CRC-32 over all gcda bytes
+        U32 nameCrc;      //!< CRC-32 of the current object's gcda file name
+        U8 object;        //!< Current object index
+        U8 chunkLength;   //!< Bytes in chunkData
+        bool lastInWindow;  //!< The current object's most recent chunk was emitted
+        U8 chunkData[COVERAGE_CHUNK];
+    };
+    static U32 crc32Update(U32 crc, const U8* data, U32 length);
+    static void coverageFilename(const char* name, void* arg);
+    static void coverageDump(const void* data, unsigned length, void* arg);
+    static void* coverageAllocate(unsigned length, void* arg);
+    void coverageInit();
+    void coverageZero();
+    void coverageFlushChunk(bool objectEnd);
+    CoverageWalk m_cov;
 };
 
 }  // namespace CuriosityReference

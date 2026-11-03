@@ -9,6 +9,17 @@
 
 #include "Fw/Types/Assert.hpp"
 
+#ifdef FRAM_COVERAGE_TRIAL
+// GCC >= 11 freestanding gcov: __gcov_info_to_gcda streams one object's .gcda through callbacks
+extern "C" {
+#include <gcov.h>  // declares no C linkage itself
+extern const struct gcov_info* const __gcov_info_start[];  // linker script .gcov_info
+extern const struct gcov_info* const __gcov_info_end[];
+extern U32 __gcov_counters_start[];  // linker script .gcov_counters (NOLOAD: survives a warm reset)
+extern U32 __gcov_counters_end[];
+}
+#endif
+
 namespace CuriosityReference {
 
 constexpr FwIndexType FramTester::CLIENTS;
@@ -19,6 +30,20 @@ constexpr U32 FramTester::FRAM_SIZE;
 constexpr U16 FramTester::SWEEP_CHUNKS;
 constexpr FwSizeType FramTester::SERIAL_WORDS;
 constexpr U32 FramTester::SERIAL_WORD_ADDRESS[FramTester::SERIAL_WORDS];
+constexpr FwSizeType FramTester::COVERAGE_CHUNK;
+constexpr U8 FramTester::COVERAGE_MAX_CHUNKS;
+
+#ifdef FRAM_COVERAGE_TRIAL
+namespace {
+// Which image the preserved counters belong to; lives in the counter region, so it is not zeroed at startup
+struct CoverageId {
+    U32 magic;
+    U32 identity;
+};
+__attribute__((section(".gcov_counters.id"), used)) CoverageId s_coverageId;
+constexpr U32 COVERAGE_MAGIC = 0xC0FEC0DEu;
+}  // namespace
+#endif
 
 FramTester ::FramTester(const char* const compName)
     : FramTesterComponentBase(compName),
@@ -38,10 +63,12 @@ FramTester ::FramTester(const char* const compName)
       m_bytesWritten(0),
       m_bytesVerified(0),
       m_mismatches(0),
-      m_rejectionsSeen(0) {
+      m_rejectionsSeen(0),
+      m_cov() {
     for (FwIndexType i = 0; i < CLIENTS; i++) {
         this->m_activity[i] = FramTester_Activity::NONE;
     }
+    this->coverageInit();
 }
 
 FramTester ::~FramTester() {}
@@ -308,6 +335,136 @@ void FramTester ::DUMP_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 offset, U
     }
     (void)this->issueRead(0, offset, length, 0, FramTester_Activity::DUMP);
     this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+}
+
+void FramTester ::DUMP_COVERAGE_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U16 start, U8 count) {
+#ifdef FRAM_COVERAGE_TRIAL
+    if (count > COVERAGE_MAX_CHUNKS) {
+        this->log_WARNING_LO_CommandRejected(static_cast<U8>(opCode & 0xFF));
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::VALIDATION_ERROR);
+        return;
+    }
+    if (count == 0) {
+        this->coverageZero();
+        this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+        return;
+    }
+    // Every command walks the whole stream (chunk indices are only known by walking) and emits its window
+    this->m_cov = CoverageWalk();
+    this->m_cov.windowStart = start;
+    this->m_cov.windowEnd = static_cast<U32>(start) + count;
+    this->m_cov.crc = 0xFFFFFFFFu;
+    for (const struct gcov_info* const* info = __gcov_info_start; info < __gcov_info_end; info++) {
+        this->m_cov.objectBytes = 0;
+        this->m_cov.lastInWindow = false;
+        this->m_cov.nameCrc = 0;
+        __gcov_info_to_gcda(*info, coverageFilename, coverageDump, coverageAllocate, this);
+        this->coverageFlushChunk(true);
+        this->m_cov.object++;
+    }
+    if (this->m_cov.windowEnd >= this->m_cov.chunk) {
+        this->log_ACTIVITY_HI_CoverageDumpDone(this->m_cov.object, this->m_cov.totalBytes, this->m_cov.crc ^ 0xFFFFFFFFu);
+    }
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
+#else
+    (void)start;
+    (void)count;
+    this->log_WARNING_LO_CommandRejected(static_cast<U8>(opCode & 0xFF));
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
+#endif
+}
+
+// ----------------------------------------------------------------------
+// Coverage trial helpers (no-ops without FRAM_COVERAGE_TRIAL)
+// ----------------------------------------------------------------------
+
+U32 FramTester ::crc32Update(U32 crc, const U8* data, U32 length) {
+    for (U32 i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (U8 k = 0; k < 8; k++) {
+            crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+        }
+    }
+    return crc;
+}
+
+void FramTester ::coverageInit() {
+#ifdef FRAM_COVERAGE_TRIAL
+    // Identity of the image: the .gcov_info pointer table and the counter region bounds move with any
+    // change to the instrumented code. Mismatch (cold start, new image) -> start from zero.
+    const U8* tableStart = reinterpret_cast<const U8*>(__gcov_info_start);
+    const U8* tableEnd = reinterpret_cast<const U8*>(__gcov_info_end);
+    U32 identity = crc32Update(0xFFFFFFFFu, tableStart, static_cast<U32>(tableEnd - tableStart));
+    identity ^= reinterpret_cast<U32>(__gcov_counters_start) ^ reinterpret_cast<U32>(__gcov_counters_end);
+    if ((s_coverageId.magic != COVERAGE_MAGIC) || (s_coverageId.identity != identity)) {
+        for (U32* word = __gcov_counters_start; word < __gcov_counters_end; word++) {
+            *word = 0;
+        }
+        s_coverageId.magic = COVERAGE_MAGIC;
+        s_coverageId.identity = identity;
+    }
+#endif
+}
+
+void FramTester ::coverageZero() {
+#ifdef FRAM_COVERAGE_TRIAL
+    for (U32* word = __gcov_counters_start; word < __gcov_counters_end; word++) {
+        *word = 0;
+    }
+    s_coverageId.magic = 0;  // force coverageInit to restamp the identity
+    this->coverageInit();
+#endif
+}
+
+void FramTester ::coverageFilename(const char* name, void* arg) {
+    FramTester* self = static_cast<FramTester*>(arg);
+    self->m_cov.nameCrc =
+        crc32Update(0xFFFFFFFFu, reinterpret_cast<const U8*>(name), static_cast<U32>(strlen(name))) ^ 0xFFFFFFFFu;
+}
+
+void FramTester ::coverageDump(const void* data, unsigned length, void* arg) {
+    FramTester* self = static_cast<FramTester*>(arg);
+    const U8* bytes = static_cast<const U8*>(data);
+    self->m_cov.crc = crc32Update(self->m_cov.crc, bytes, length);
+    for (unsigned i = 0; i < length; i++) {
+        self->m_cov.chunkData[self->m_cov.chunkLength++] = bytes[i];
+        self->m_cov.objectBytes++;
+        self->m_cov.totalBytes++;
+        if (self->m_cov.chunkLength == COVERAGE_CHUNK) {
+            self->coverageFlushChunk(false);
+        }
+    }
+}
+
+void* FramTester ::coverageAllocate(unsigned length, void* arg) {
+    // Only TOPN value-profile counters allocate; -fprofile-arcs alone never calls this
+    (void)length;
+    (void)arg;
+    FW_ASSERT(0);
+    return nullptr;
+}
+
+void FramTester ::coverageFlushChunk(bool objectEnd) {
+    CoverageWalk& w = this->m_cov;
+    if (w.chunkLength > 0) {
+        if ((w.chunk >= w.windowStart) && (w.chunk < w.windowEnd)) {
+            U32 words[COVERAGE_CHUNK / 4] = {0};
+            for (FwSizeType i = 0; i < w.chunkLength; i++) {
+                words[i / 4] |= static_cast<U32>(w.chunkData[i]) << (24 - 8 * (i % 4));
+            }
+            this->log_ACTIVITY_LO_CoverageChunk(w.object, w.objectBytes - w.chunkLength, w.chunkLength, words[0],
+                                                words[1], words[2], words[3], words[4], words[5], words[6],
+                                                words[7]);
+            w.lastInWindow = true;
+        } else {
+            w.lastInWindow = false;
+        }
+        w.chunk++;
+        w.chunkLength = 0;
+    }
+    if (objectEnd && w.lastInWindow) {
+        this->log_ACTIVITY_LO_CoverageObject(w.object, w.nameCrc, w.objectBytes);
+    }
 }
 
 // ----------------------------------------------------------------------

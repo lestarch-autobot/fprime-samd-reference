@@ -88,6 +88,16 @@ module CuriosityReference {
             length: U8 @< Bytes, 1..8
         ) opcode 7
 
+        @ Coverage trial (development builds only, -DFRAM_COVERAGE_TRIAL): walk the gcda streams of every
+        @ gcov-instrumented object (`__gcov_info_start..__gcov_info_end`) and emit chunks `start..start+count-1`
+        @ of the global 32-byte chunk sequence as CoverageChunk events; the ground paces the walk by repeating
+        @ the command. CoverageDumpDone follows once the window reaches the last chunk. `count` = 0 zeroes the
+        @ counters (they live outside .bss and survive a warm reset). Rejected (EXECUTION_ERROR) in normal builds.
+        sync command DUMP_COVERAGE(
+            start: U16 @< First global 32-byte chunk index
+            count: U8 @< Chunks to emit, 1..4 (two fit one 128-byte downlink frame); 0 = zero all counters
+        ) opcode 8
+
         # ------------------------------------------------------------------
         # Types
         # ------------------------------------------------------------------
@@ -191,6 +201,35 @@ module CuriosityReference {
 
         @ Command argument out of range (client > 1, length out of bounds) or a request outstanding on that client
         event CommandRejected($opcode: U8) severity warning low id 9 format "FramTester command {} rejected"
+
+        @ Coverage trial: an instrumented object's gcda stream is complete (emitted with its last chunk)
+        event CoverageObject(
+            object: U8 @< Index in __gcov_info_start order
+            nameCrc: U32 @< CRC-32 (IEEE) of the .gcda file name the compiler recorded for the object
+            bytes: U32 @< gcda bytes of this object
+        ) severity activity low id 10 format "FramTester coverage object {} name-crc {x}: {} bytes"
+
+        @ Coverage trial: up to 32 gcda bytes of one object, MSB-first packed, zero-padded past length
+        event CoverageChunk(
+            object: U8 @< Object index
+            offset: U32 @< Byte offset of the chunk in the object's gcda stream
+            length: U8 @< Valid bytes, 1..32
+            data0: U32 @< Bytes 0-3
+            data1: U32 @< Bytes 4-7
+            data2: U32 @< Bytes 8-11
+            data3: U32 @< Bytes 12-15
+            data4: U32 @< Bytes 16-19
+            data5: U32 @< Bytes 20-23
+            data6: U32 @< Bytes 24-27
+            data7: U32 @< Bytes 28-31
+        ) severity activity low id 11 format "FramTester coverage chunk obj {} off {} len {}: {x} {x} {x} {x} {x} {x} {x} {x}"
+
+        @ Coverage trial: the dump window reached the end of the last object
+        event CoverageDumpDone(
+            objects: U8 @< Instrumented objects walked
+            totalBytes: U32 @< gcda bytes over all objects
+            crc: U32 @< CRC-32 (IEEE) over all gcda bytes, objects in order
+        ) severity activity high id 12 format "FramTester coverage dump done: {} objects, {} bytes, crc {x}"
 
         # ------------------------------------------------------------------
         # Telemetry
