@@ -17,6 +17,8 @@ constexpr FwSizeType FramTester::MAX_RAW;
 constexpr FwSizeType FramTester::MAX_DUMP;
 constexpr U32 FramTester::FRAM_SIZE;
 constexpr U16 FramTester::SWEEP_CHUNKS;
+constexpr FwSizeType FramTester::SERIAL_WORDS;
+constexpr U32 FramTester::SERIAL_WORD_ADDRESS[FramTester::SERIAL_WORDS];
 
 FramTester ::FramTester(const char* const compName)
     : FramTesterComponentBase(compName),
@@ -169,6 +171,22 @@ void FramTester ::writeComplete_handler(FwIndexType portNum, U32 offset, Fw::Buf
             this->log_WARNING_HI_UnexpectedCompletion(client, status);
             break;
     }
+}
+
+// ----------------------------------------------------------------------
+// Scheduler
+// ----------------------------------------------------------------------
+
+void FramTester ::schedIn_handler(FwIndexType portNum, U32 context) {
+    U32 words[SERIAL_WORDS];
+    for (FwSizeType i = 0; i < SERIAL_WORDS; i++) {
+        // Hardware read of a fixed NVM address (CPP-10: the only way to reach a memory-mapped word)
+        words[i] = *reinterpret_cast<volatile const U32*>(SERIAL_WORD_ADDRESS[i]);
+    }
+    this->tlmWrite_McuSerial0(words[0]);
+    this->tlmWrite_McuSerial1(words[1]);
+    this->tlmWrite_McuSerial2(words[2]);
+    this->tlmWrite_McuSerial3(words[3]);
 }
 
 // ----------------------------------------------------------------------

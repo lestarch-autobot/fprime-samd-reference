@@ -25,6 +25,9 @@ class FramTester final : public FramTesterComponentBase {
     static constexpr FwSizeType MAX_DUMP = 8;
     static constexpr U32 FRAM_SIZE = 262144;            //!< Fram.FramConfig.Size
     static constexpr U16 SWEEP_CHUNKS = static_cast<U16>(FRAM_SIZE / MAX_TRANSFER);
+    static constexpr FwSizeType SERIAL_WORDS = 4;
+    //! SAMD21 128-bit unique serial number: four non-contiguous words in the NVM (data sheet section 10.3.3)
+    static constexpr U32 SERIAL_WORD_ADDRESS[SERIAL_WORDS] = {0x0080A00Cu, 0x0080A040u, 0x0080A044u, 0x0080A048u};
 
     // cppcheck-suppress noExplicitConstructor
     FramTester(const char* const compName);
@@ -37,6 +40,8 @@ class FramTester final : public FramTesterComponentBase {
     // Port handlers
     void readComplete_handler(FwIndexType portNum, U32 offset, Fw::Buffer& buffer, const Fram::Status& status) override;
     void writeComplete_handler(FwIndexType portNum, U32 offset, Fw::Buffer& buffer, const Fram::Status& status) override;
+    //! Publishes McuSerial0..3 from SERIAL_WORD_ADDRESS
+    void schedIn_handler(FwIndexType portNum, U32 context) override;
 
     // Command handlers
     void MARK_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 id) override;
