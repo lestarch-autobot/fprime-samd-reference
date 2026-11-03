@@ -15,6 +15,15 @@
 #include "CuriosityReference/FramTester/FramTester_BurstModeEnumAc.hpp"
 #include "Fw/Buffer/Buffer.hpp"
 
+// Coverage trial: functions that run between two DUMP_COVERAGE windows (the dump path itself and the
+// 1 Hz schedIn) must not move any arc counter, or the windows describe different gcda streams and the
+// final CRC cannot match. GCC >= 8 attribute; empty in normal builds.
+#ifdef FRAM_COVERAGE_TRIAL
+#define FRAM_COVERAGE_NO_INSTRUMENT __attribute__((no_profile_instrument_function))
+#else
+#define FRAM_COVERAGE_NO_INSTRUMENT
+#endif
+
 namespace CuriosityReference {
 
 class FramTester final : public FramTesterComponentBase {
@@ -43,7 +52,7 @@ class FramTester final : public FramTesterComponentBase {
     void readComplete_handler(FwIndexType portNum, U32 offset, Fw::Buffer& buffer, const Fram::Status& status) override;
     void writeComplete_handler(FwIndexType portNum, U32 offset, Fw::Buffer& buffer, const Fram::Status& status) override;
     //! Publishes McuSerial0..3 from SERIAL_WORD_ADDRESS
-    void schedIn_handler(FwIndexType portNum, U32 context) override;
+    FRAM_COVERAGE_NO_INSTRUMENT void schedIn_handler(FwIndexType portNum, U32 context) override;
 
     // Command handlers
     void MARK_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 id) override;
@@ -54,7 +63,7 @@ class FramTester final : public FramTesterComponentBase {
     void CHAIN_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U8 client, U32 offset, U8 length, U32 seed) override;
     void SWEEP_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 seed, U16 chunks, U32 verifySeed) override;
     void DUMP_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U32 offset, U8 length) override;
-    void DUMP_COVERAGE_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U16 start, U8 count) override;
+    FRAM_COVERAGE_NO_INSTRUMENT void DUMP_COVERAGE_cmdHandler(FwOpcodeType opCode, U32 cmdSeq, U16 start, U8 count) override;
 
     // Helpers
     //! Common argument check for the pattern commands; sends the command response on failure
@@ -109,13 +118,13 @@ class FramTester final : public FramTesterComponentBase {
         bool lastInWindow;  //!< The current object's most recent chunk was emitted
         U8 chunkData[COVERAGE_CHUNK];
     };
-    static U32 crc32Update(U32 crc, const U8* data, U32 length);
-    static void coverageFilename(const char* name, void* arg);
-    static void coverageDump(const void* data, unsigned length, void* arg);
-    static void* coverageAllocate(unsigned length, void* arg);
-    void coverageInit();
-    void coverageZero();
-    void coverageFlushChunk(bool objectEnd);
+    FRAM_COVERAGE_NO_INSTRUMENT static U32 crc32Update(U32 crc, const U8* data, U32 length);
+    FRAM_COVERAGE_NO_INSTRUMENT static void coverageFilename(const char* name, void* arg);
+    FRAM_COVERAGE_NO_INSTRUMENT static void coverageDump(const void* data, unsigned length, void* arg);
+    FRAM_COVERAGE_NO_INSTRUMENT static void* coverageAllocate(unsigned length, void* arg);
+    FRAM_COVERAGE_NO_INSTRUMENT void coverageInit();
+    FRAM_COVERAGE_NO_INSTRUMENT void coverageZero();
+    FRAM_COVERAGE_NO_INSTRUMENT void coverageFlushChunk(bool objectEnd);
     CoverageWalk m_cov;
 };
 
