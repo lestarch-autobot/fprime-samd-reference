@@ -1,0 +1,105 @@
+{
+ "name": "COV-FRAM \u2014 on-target gcov dump after a QUAL-FRAM run (development trial, not RfR)",
+ "markers": {
+  "command": "framTester.MARK",
+  "event": "framTester.Marker",
+  "arg": "id",
+  "reserved_min": 4294901760
+ },
+ "event_patterns": {
+  "framTester.Marker": "FramTester marker (?P<id>\\d+)$",
+  "framTester.RequestReturned": "FramTester (?P<op>\\w+) client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+) returned (?P<status>\\w+)$",
+  "framTester.WriteDone": "FramTester write done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+)$",
+  "framTester.VerifyDone": "FramTester verify done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+) mismatches (?P<mismatches>\\d+)$",
+  "framTester.RawDone": "FramTester raw (?P<op>\\w+) done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+)$",
+  "framTester.UnexpectedCompletion": "FramTester unexpected completion on client (?P<client>\\d+): (?P<status>\\w+) \\((?P<cause>\\w+)\\)$",
+  "framTester.BufferMismatch": "FramTester buffer mismatch on client (?P<client>\\d+)$",
+  "framTester.CommandRejected": "FramTester command (?P<opcode>\\d+) rejected$",
+  "framTester.SweepDone": "FramTester sweep (?P<kind>\\w+) done: (?P<chunks>\\d+) chunks, (?P<errors>\\d+) errors$",
+  "framTester.DumpData": "FramTester dump offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<data0>[0-9a-fA-F]+) (?P<data1>[0-9a-fA-F]+)$",
+  "framDriver.RequestRejected": "F-RAM (?P<op>\\w+) on port (?P<client>\\d+) at offset (?P<offset>\\d+) size (?P<length>\\d+) rejected: (?P<status>\\w+) \\((?P<reason>\\w+)\\)$",
+  "framDriver.SpiError": "F-RAM (?P<op>\\w+) on port (?P<client>\\d+) at offset (?P<offset>\\d+) size (?P<length>\\d+) failed with SPI status (?P<status>\\w+) at (?P<stage>\\w+)$",
+  "cmdDisp.OpCodeDispatched": "Opcode (?P<opCode>0x[0-9a-fA-F]+) dispatched to port (?P<port>\\d+)$",
+  "cmdDisp.OpCodeCompleted": "Opcode (?P<opCode>0x[0-9a-fA-F]+) completed$",
+  "framTester.CoverageObject": "FramTester coverage object (?P<object>\\d+) name-crc (?P<nameCrc>[0-9a-fA-F]+): (?P<bytes>\\d+) bytes$",
+  "framTester.CoverageChunk": "FramTester coverage chunk obj (?P<object>\\d+) off (?P<offset>\\d+) len (?P<length>\\d+): (?P<data0>[0-9a-fA-F]+) (?P<data1>[0-9a-fA-F]+) (?P<data2>[0-9a-fA-F]+) (?P<data3>[0-9a-fA-F]+) (?P<data4>[0-9a-fA-F]+) (?P<data5>[0-9a-fA-F]+) (?P<data6>[0-9a-fA-F]+) (?P<data7>[0-9a-fA-F]+)$",
+  "framTester.CoverageDumpDone": "FramTester coverage dump done: (?P<objects>\\d+) objects, (?P<totalBytes>\\d+) bytes, crc (?P<crc>[0-9a-fA-F]+)$"
+ },
+ "packets": {
+  "fram": [
+   "framDriver.StartupState",
+   "framDriver.DeviceIdMatch",
+   "framDriver.StatusRegister",
+   "framDriver.ReadsCompleted",
+   "framDriver.WritesCompleted",
+   "framDriver.RequestsRejected",
+   "framDriver.SpiErrors",
+   "framTester.BytesWritten",
+   "framTester.BytesVerified",
+   "framTester.Mismatches",
+   "framTester.RejectionsSeen"
+  ],
+  "Health": [
+   "rg8Hz.CycleCount"
+  ]
+ },
+ "std_complete": [
+  "both markers present",
+  "commands_sent == count(event cmdDisp.OpCodeDispatched)",
+  "event cmdDisp.OpCodeError count == 0",
+  "event cmdDisp.TooManyCommands count == 0",
+  "delta(framer.DroppedPackets) == 0",
+  "fram samples >= 2"
+ ],
+ "uut": "Fram.FramDriver (fprime-community/fprime-devices)",
+ "deployment": "CuriosityReference (fprime-samd-reference) with harness component framTester",
+ "scope": "Development trial only. One test: after the 14-test plan has run on the gcov-instrumented coverage-trial image (counters survive the plan's MCU resets and fth's flash+reset of the same image), stream the gcda data of FramDriver.cpp and FramTester.cpp to the ground as CoverageChunk events. Verifies nothing about the UUT; the record feeds `fth coverage-system`, which reassembles the .gcda files and runs gcovr.",
+ "abs": {
+  "ABS": [
+   "event framTester.CommandRejected count == 0",
+   "event framTester.UnexpectedCompletion count == 0"
+  ]
+ },
+ "requirements": {},
+ "levels": {
+  "COV": "Coverage dump (development trial)"
+ },
+ "tests": [
+  {
+   "id": "COV-1",
+   "title": "On-target gcov dump of FramDriver.cpp and FramTester.cpp",
+   "purpose": "Stream every gcda byte of the two instrumented objects to the ground, paced so the framer drops nothing. 160 x 2 chunks = 10 KiB window; the build's gcda total is ~6 KiB, so the walk ends inside it.",
+   "covers": [],
+   "covers_note": "\u2014 (development trial; not a requirement verification)",
+   "setup": "coverage-trial image flashed; the QUAL-FRAM plan run has just completed on it (counters preserved).",
+   "procedure": [
+    "MARK(900)",
+    "bracket (2 samples)",
+    "DUMP_COVERAGE(start, 2) for start = 0, 2, 4, ... 318 (160 commands; past the end only CoverageDumpDone repeats)",
+    "bracket (2 samples)",
+    "MARK(901)"
+   ],
+   "windows": [
+    {
+     "name": "W",
+     "start_id": 900,
+     "end_id": 901,
+     "reset": false
+    }
+   ],
+   "complete": [
+    "STD",
+    "commands_sent == 160"
+   ],
+   "all_of": [
+    "event framTester.CoverageObject(object=0) count == 1",
+    "event framTester.CoverageObject(object=1) count == 1",
+    "event framTester.CoverageObject(object=1) precedes event framTester.CoverageDumpDone"
+   ],
+   "metrics": [],
+   "rationale": [],
+   "knobs": [],
+   "evidence": "Both objects announced once (their last chunk emitted exactly once); CoverageDumpDone follows; the reassembled gcda bytes' CRC-32 equals CoverageDumpDone.crc (checked by fth coverage-system)."
+  }
+ ]
+}
