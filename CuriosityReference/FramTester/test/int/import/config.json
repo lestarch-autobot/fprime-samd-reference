@@ -1,0 +1,146 @@
+{
+  "name": "QUAL-FRAM — Fram.FramDriver on CuriosityReference",
+  "uut": "Fram.FramDriver (fprime-community/fprime-devices)",
+  "deployment": "CuriosityReference (fprime-samd-reference) with harness component framTester",
+  "helpers_module": "plan_helpers.py",
+  "req_prefix": "REQ-FramDriver-",
+  "markers": {
+    "command": "framTester.MARK",
+    "event": "framTester.Marker",
+    "arg": "id",
+    "reserved_min": 4294901760
+  },
+  "event_patterns": {
+    "framTester.Marker": "FramTester marker (?P<id>\\d+)$",
+    "framTester.RequestReturned": "FramTester (?P<op>\\w+) client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+) returned (?P<status>\\w+)$",
+    "framTester.WriteDone": "FramTester write done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+)$",
+    "framTester.VerifyDone": "FramTester verify done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+) mismatches (?P<mismatches>\\d+)$",
+    "framTester.RawDone": "FramTester raw (?P<op>\\w+) done client (?P<client>\\d+) offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<status>\\w+)$",
+    "framTester.UnexpectedCompletion": "FramTester unexpected completion on client (?P<client>\\d+): (?P<status>\\w+)$",
+    "framTester.BufferMismatch": "FramTester buffer mismatch on client (?P<client>\\d+)$",
+    "framTester.CommandRejected": "FramTester command (?P<opcode>\\d+) rejected$",
+    "framTester.SweepDone": "FramTester sweep (?P<kind>\\w+) done: (?P<chunks>\\d+) chunks, (?P<errors>\\d+) errors$",
+    "framTester.DumpData": "FramTester dump offset (?P<offset>\\d+) length (?P<length>\\d+): (?P<data0>[0-9a-fA-F]+) (?P<data1>[0-9a-fA-F]+)$",
+    "framDriver.RequestRejected": "F-RAM (?P<op>\\w+) on port (?P<client>\\d+) at offset (?P<offset>\\d+) size (?P<length>\\d+) rejected: (?P<status>\\w+) \\((?P<reason>\\w+)\\)$",
+    "framDriver.SpiError": "F-RAM (?P<op>\\w+) on port (?P<client>\\d+) at offset (?P<offset>\\d+) size (?P<length>\\d+) failed with SPI status (?P<status>\\w+) at (?P<stage>\\w+)$",
+    "cmdDisp.OpCodeDispatched": "Opcode (?P<opCode>0x[0-9a-fA-F]+) dispatched to port (?P<port>\\d+)$",
+    "cmdDisp.OpCodeCompleted": "Opcode (?P<opCode>0x[0-9a-fA-F]+) completed$"
+  },
+  "packets": {
+    "fram": [
+      "framDriver.StartupState",
+      "framDriver.DeviceIdMatch",
+      "framDriver.StatusRegister",
+      "framDriver.ReadsCompleted",
+      "framDriver.WritesCompleted",
+      "framDriver.RequestsRejected",
+      "framDriver.SpiErrors",
+      "framTester.BytesWritten",
+      "framTester.BytesVerified",
+      "framTester.Mismatches",
+      "framTester.RejectionsSeen"
+    ],
+    "Health": [
+      "rg8Hz.CycleCount"
+    ]
+  },
+  "std_complete": [
+    "both markers present",
+    "commands_sent == count(event cmdDisp.OpCodeDispatched)",
+    "event cmdDisp.OpCodeError count == 0",
+    "event cmdDisp.TooManyCommands count == 0",
+    "delta(framer.DroppedPackets) == 0",
+    "fram samples >= 2"
+  ],
+  "abs": {
+    "ABS": [
+      "event framTester.UnexpectedCompletion count == 0",
+      "event framTester.BufferMismatch count == 0",
+      "event framTester.RawDone count == 0",
+      "event framTester.CommandRejected count == 0"
+    ]
+  },
+  "symbols": {
+    "Health": 1
+  },
+  "drop": [
+    "R is split at the reboot — the exporter's epoch boundary (FSW time falls back by > 1 s), not at any UUT event",
+    "the checker records the elapsed value in its notes"
+  ],
+  "helper_map": {
+    "boot-1 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot1 == last(framer.DroppedPackets) in W1": {
+      "helper": "last_in_boot_equals_last_in_window",
+      "args": {
+        "channel": "framer.DroppedPackets",
+        "window": "R",
+        "boot": 0,
+        "other": "W1"
+      }
+    },
+    "boot-2 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot2 == 0": {
+      "helper": "last_in_boot_equals",
+      "args": {
+        "channel": "framer.DroppedPackets",
+        "window": "R",
+        "boot": 1,
+        "value": 0
+      }
+    },
+    "last(rg8Hz.CycleCount) in W2 < last(rg8Hz.CycleCount) in W1": {
+      "helper": "last_less_than_other_window",
+      "args": {
+        "channel": "rg8Hz.CycleCount",
+        "other": "W1"
+      }
+    },
+    "for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k to +7) — computed by the auditor from the plan's normative pattern generator quoted on the page, not from any harness output": {
+      "helper": "dump_image_matches_xorshift32",
+      "args": {
+        "seed": 61937,
+        "base": 261888,
+        "chunk": 8,
+        "count": 32
+      }
+    },
+    "window W lies in a later boot epoch than the record's first (the L3-1 reset preceded it)": {
+      "helper": "window_in_later_boot",
+      "args": {}
+    },
+    "for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k…+7) — computed by the auditor from the §0 generator, not from any harness output": {
+      "helper": "dump_image_matches_xorshift32",
+      "args": {
+        "seed": 61937,
+        "base": 261888,
+        "chunk": 8,
+        "count": 32
+      }
+    }
+  },
+  "purpose": {
+    "L0-1": "Confirms the driver identified the device at startup and left the status register in the expected idle state.",
+    "L0-2": "Proves the marker command round-trips through the command path so every later window can be bracketed.",
+    "L2-1": "Writes a 64-byte pattern at offset 0 and reads it back to prove the basic write/read path and the completion counters.",
+    "L2-2": "Writes and verifies the last 64 bytes of the array and shows that a request one byte past the end is rejected OUT_OF_RANGE.",
+    "L2-3": "Shows that completions are returned on the port index that made the request.",
+    "L2-5": "Writes and verifies every chunk of the device in one chained sweep.",
+    "L3-1": "Shows that data written before an MCU reset is still intact after it, and that the reboot is visible in the record.",
+    "L5-1": "Shows that a second request issued while a transfer is in progress is rejected BUSY without a completion.",
+    "L5-2": "Shows that zero-length and over-size requests are rejected OUT_OF_RANGE without a completion.",
+    "L5-3": "Shows that a request issued from inside a completion callback is accepted.",
+    "L6-1": "Negative control: the verifier reports 64 mismatches when the read-back seed is wrong.",
+    "L7-1": "Leaves a known image in the last 256 bytes and dumps it so the auditor can regenerate and compare it independently."
+  },
+  "replace": {
+    "t(SweepDone VERIFY) − t(SWEEP sent) ≤ 1200 s, both on the FSW clock: t(SWEEP sent) is the SWEEP's own `cmdDisp.OpCodeDispatched` row": "t(event framTester.SweepDone(kind=VERIFY)) - t(framTester.SWEEP sent) <= 1200 s"
+  },
+  "requirements": {
+    "REQ-FramDriver-023": {
+      "tests": [
+        "L3-1",
+        "L3-2"
+      ],
+      "verification": "L3-1, L3-2 (non-volatility — one-off, verification method Inspection; datasheet 002-26764 Rev.*D §Features)",
+      "note": "one-off Inspection"
+    }
+  }
+}

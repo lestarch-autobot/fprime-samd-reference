@@ -1,0 +1,31 @@
+{
+  "deployment": "CuriosityReference",
+  "dictionary": "uut/build-artifacts/samd21g17/CuriosityReference/dict/TopTopologyDictionary.json",
+  "serial": "MCHP3313053000002254",
+  "uart": "/dev/samd21-curiosity",
+  "vars": {
+    "serial": "MCHP3313053000002254",
+    "uart": "/dev/samd21-curiosity",
+    "baud": "115200",
+    "zmq": "ipc:///tmp/fprime-server-in ipc:///tmp/fprime-server-out"
+  },
+  "flash": "openocd -f interface/cmsis-dap.cfg -c 'adapter serial {serial}' -f target/at91samdXX.cfg -c 'program {image} verify reset exit'",
+  "dump": "openocd -f interface/cmsis-dap.cfg -c 'adapter serial {serial}' -f target/at91samdXX.cfg -c 'init; halt; dump_image {readback} 0x00000000 0x20000; resume; exit'",
+  "reset": "openocd -f interface/cmsis-dap.cfg -c 'adapter serial {serial}' -f target/at91samdXX.cfg -c 'init; reset run; exit'",
+  "gds": "fprime-gds -n --dictionary {dictionary} --packet-set-name Main --communication-selection uart --uart-device {uart} --uart-baud {baud} --framing-selection fprime --gui none --zmq-transport {zmq} --logs {logs}",
+  "recorder": "fprime-cli events --dictionary {dictionary} --zmq-transport {zmq} --logs {logs}",
+  "send": "fprime-cli command-send --dictionary {dictionary} --zmq-transport {zmq} --logs {logs} {command} --arguments {args}",
+  "timeouts": {
+    "flash_s": 300,
+    "gds_start_s": 8,
+    "recorder_start_s": 3,
+    "send_s": 60,
+    "command_s": 30,
+    "reset_settle_s": 5
+  },
+  "provenance": {
+    "serial_re": "Serial# = (\\S+)",
+    "note": "regex (one group) that extracts the debugger USB serial from the openocd flash/dump output"
+  },
+  "notes": "Relative paths only: run from the campaign root on the bench host (Pi). The seed bench notes (aux/bench.md) are the source of the openocd/gds/recorder lines; adjust the dictionary path to the manifest's build-artifacts tree."
+}

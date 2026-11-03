@@ -1,22 +1,36 @@
-# FramTester system test — stimulus for the QUAL-FRAM plan
+# FramTester system test — the QUAL-FRAM plan and its stimulus
 
-This directory is the *deployment side* of the FRAM qualification test. It holds only the
-pytest stimulus (`test_fram_plan.py`) and a copy of the regression vector. Everything that
-decides pass/fail lives in the tooling repo
-[`LeStarch/fprime-testing-harness`](https://github.com/LeStarch/fprime-testing-harness)
-under `pilot/fram/`:
+This directory is the **single source of truth** for the FRAM qualification system test. By the
+Captain's layout rule (test-process skills, "Layout"): the plan, the fault knobs and helper
+predicates, the stimulus tests and the independent checker live in the deployment branch that
+hosts the test-helper component (`CuriosityReference/FramTester`), beside it; the UUT repo
+(`fprime-community/fprime-devices`, `Fram.FramDriver`) holds the component, its unit tests and
+its SDD; the tooling repo [`LeStarch/fprime-testing-harness`](https://github.com/LeStarch/fprime-testing-harness)
+holds nothing UUT-specific (generic `fth` engine/runner/auditor/renderer plus vendored *records*
+as regression vectors, each with a labelled copy of this plan under `vectors/plans/qual-fram/`).
 
-| what | where (single source of truth) |
+| what | file (here) |
 |---|---|
-| plan: tests, windows, procedures, pass rules as predicate data, requirements, decision log | `pilot/fram/plan.json` (`plan.md` is rendered from it: `fth render-plan`) |
-| registered helpers and fault knobs (`@helper`, `@knob`) | `pilot/fram/plan_helpers.py` |
-| generated fault menu | `pilot/fram/faults-menu.json` (`fth knobs-menu`, never hand-edited) |
-| bench command lines (OpenOCD, GDS, recorder, sender) | `pilot/fram/bench.json` |
-| regression vector: sealed record `fram-r2` + expected verdicts | `vectors/fram-r2/` |
+| plan: tests, windows, procedures, pass rules as predicate data, requirements, decision log | `plan.json` (`plan.md` is rendered from it: `fth render-plan plan.json`, never hand-edited) |
+| registered helper predicates and fault knobs (`@helper`, `@knob`) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
+| generated fault menu | `faults-menu.json` (`fth knobs-menu plan.json`, never hand-edited) |
+| bench command lines (OpenOCD, GDS, recorder, sender) | `bench.json` |
+| pytest stimulus, one test per plan id | `test_fram_plan.py` |
+| the adversary's independent checker (written from the plan text alone) | `independent_fram_checks.py` — `fth audit --independent` |
+| plan import provenance (the approved `plan.md` the JSON was ported from) | `import/` |
+| regression verdicts this branch was ported against | `vectors/fram-r2.json` (copy of the tooling repo's `vectors/fram-r2/expected-verdicts.json`) |
 
-`vectors/fram-r2.json` here is a *copy* of the tooling repo's `vectors/fram-r2/expected-verdicts.json`
-kept so this branch states the verdicts it was ported against; the tooling repo's file is the one the
-`fth vectors` gate checks. If the two differ, the tooling repo wins.
+Run (from a checkout of this branch, `fth` installed at the manifest's pin):
+
+```
+fth verify-plan CuriosityReference/FramTester/test/int/plan.json
+fth run --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
+       --bench CuriosityReference/FramTester/test/int/bench.json --tests CuriosityReference/FramTester/test/int
+fth audit --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
+          --independent CuriosityReference/FramTester/test/int/independent_fram_checks.py \
+          --sdd lib/fprime-devices/fprime-devices/Fram/Components/FramDriver/docs/sdd.md \
+          --dictionary build-artifacts/samd21g17/CuriosityReference/dict/TopTopologyDictionary.json --project-root .
+```
 
 ## Stimulus only
 
@@ -39,10 +53,11 @@ pip install -e <fprime-testing-harness>            # provides `fth` and the pyte
 fth manifest ...                                   # repos, image, bench.json, toolchain -> manifest.json
 fth draw --manifest manifest.json --seed-file seed.txt --run-dir rfr/<run-id>   # sealed/faults.json (knob names stay sealed)
 fth run --run-dir rfr/<run-id> --manifest manifest.json \
-        --plan <fprime-testing-harness>/pilot/fram/plan.json \
-        --bench <fprime-testing-harness>/pilot/fram/bench.json \
+        --plan CuriosityReference/FramTester/test/int/plan.json \
+        --bench CuriosityReference/FramTester/test/int/bench.json \
         --tests CuriosityReference/FramTester/test/int
-fth audit --run-dir rfr/<run-id> --manifest manifest.json --plan .../pilot/fram/plan.json [--independent checker.py]
+fth audit --run-dir rfr/<run-id> --manifest manifest.json --plan CuriosityReference/FramTester/test/int/plan.json \
+          --independent CuriosityReference/FramTester/test/int/independent_fram_checks.py
 ```
 
 `fth run` verifies the manifest, flashes the manifest image (OpenOCD program + `dump_image` read-back,
@@ -54,15 +69,15 @@ Dry run (no hardware; writes the same `record/raw/cmd/*/command.log` shape the r
 
 ```bash
 pytest CuriosityReference/FramTester/test/int -p fth.pytest_plugin --fth-dry-run \
-       --fth-plan .../pilot/fram/plan.json --fth-bench .../pilot/fram/bench.json \
+       --fth-plan CuriosityReference/FramTester/test/int/plan.json --fth-bench CuriosityReference/FramTester/test/int/bench.json \
        --fth-run-dir /tmp/dry --fth-manifest manifest.json
 ```
 
 Replay only (judge an existing sealed record, e.g. the regression vector):
 
 ```bash
-fth evaluate .../pilot/fram/plan.json .../vectors/fram-r2/record -o verdicts.json
-fth vectors  .../pilot/fram/plan.json .../vectors            # gate: expected verdicts still reproduced
+fth evaluate CuriosityReference/FramTester/test/int/plan.json <fprime-testing-harness>/vectors/fram-r2/record -o verdicts.json
+fth vectors  <fprime-testing-harness>/vectors               # gate: each vector judged against its vendored plan copy
 ```
 
 ## Bench facts the plan depends on

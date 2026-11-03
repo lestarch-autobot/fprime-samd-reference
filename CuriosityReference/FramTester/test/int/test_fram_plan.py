@@ -1,7 +1,8 @@
 """Stimulus for the FRAM qualification plan (QUAL-FRAM) — one pytest per plan test, in plan order.
 
-The plan (ids, windows, commands, pass rules, knobs) is data in fprime-testing-harness
-``pilot/fram/plan.json``; this module only *sends* what each test's procedure lists. No
+The plan (ids, windows, commands, pass rules, knobs) is data in ``plan.json`` beside this file
+(knobs and helper predicates in ``plan_helpers.py``); this module only *sends* what each test's
+procedure lists. No
 result is asserted here: ``fth evaluate`` / ``fth audit`` judge the sealed record afterwards.
 The only waits are pacing (the plan's ``bracket (2 samples)`` and "wait for X" steps) so that
 the next command is not sent before the device has finished the previous transfer.
