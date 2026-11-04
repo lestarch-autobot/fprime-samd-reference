@@ -40,7 +40,7 @@ Procedure: MARK(10); bracket (2 samples); bracket; MARK(11).
 Window:    Marker(id=10) … Marker(id=11)
 Pass rule: complete: STD. all_of: ABS; last(framDriver.StartupState) == COMPLETE; last(framDriver.DeviceIdMatch) == true; last(framDriver.StatusRegister) & 0x0C == 0 (BP1/BP0 clear; datasheet 002-26764 Rev.*D Table 5 — bench value to confirm at stage 2); last(framDriver.StatusRegister) & 0xBD == 0x00 (WEL bit 1 may be set; bit 6 is non-writable and always reads ‘1’ per the status-register table of 002-26764 Rev.*D — bench value 0x40 confirmed at stage 2).
 Evidence:  Channel strip StartupState / DeviceIdMatch / StatusRegister (boot events are emitted before the GDS attaches and are not in the archive — the standing channels are the evidence).
-Fault knobs: none
+Fault planted faults: none
 
 ID:        L0-2
 Title:     Marker round-trip and command path
@@ -50,7 +50,7 @@ Procedure: MARK(20); bracket (2 samples); MARK(0xA5A5); bracket; MARK(21).
 Window:    Marker(id=20) … Marker(id=21)
 Pass rule: complete: STD; commands_sent == 3. all_of: event framTester.Marker(id=0xA5A5) count == 1; event framTester.Marker(id=20) precedes event framTester.Marker(id=0xA5A5); event framTester.Marker(id=0xA5A5) precedes event framTester.Marker(id=21).
 Evidence:  Three Marker events in order.
-Fault knobs: none
+Fault planted faults: none
 
 ID:        L2-1
 Title:     Write then read back, 64 bytes at offset 0
@@ -60,7 +60,7 @@ Procedure: MARK(30); bracket (2 samples); WRITE_PATTERN(0, 0x000000, 64, 0x1001)
 Window:    Marker(id=30) … Marker(id=31)
 Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=WRITE, client=0, offset=0, length=64, status=ACCEPTED) count == 1; event framTester.RequestReturned(op=WRITE, client=0, offset=0, length=64, status=ACCEPTED) precedes event framTester.WriteDone(client=0, offset=0, length=64, status=OK); event framTester.WriteDone(client=0, offset=0, length=64, status=OK) count == 1; event framTester.VerifyDone(client=0, offset=0, length=64, status=OK, mismatches=0) count == 1; event framTester.WriteDone(client=0, offset=0, length=64) precedes event framTester.VerifyDone(client=0, offset=0, length=64); delta(framDriver.WritesCompleted) == 1; delta(framDriver.ReadsCompleted) == 1; delta(framDriver.RequestsRejected) == 0; delta(framDriver.SpiErrors) == 0; event framDriver.RequestRejected count == 0; event framDriver.SpiError count == 0.
 Evidence:  WriteDone(OK) → VerifyDone(OK, 0 mismatches); counters +1/+1.
-Fault knobs: verify_wrong_seed, corrupt_block
+Fault planted faults: verify_wrong_seed, corrupt_block
 
 ID:        L2-2
 Title:     Last 64 bytes of the array and the one-past boundary
@@ -70,7 +70,7 @@ Procedure: MARK(40); bracket (2 samples); WRITE_PATTERN(0, 0x3FFC0, 64, 0x2002);
 Window:    Marker(id=40) … Marker(id=41)
 Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(client=0, offset=0x3FFC0, length=64, status=OK) count == 1; event framTester.VerifyDone(client=0, offset=0x3FFC0, length=64, status=OK, mismatches=0) count == 1; event framTester.RequestReturned(op=READ, client=0, offset=0x3FFC1, length=64, status=OUT_OF_RANGE) count == 1; event framDriver.RequestRejected(op=READ, client=0, offset=0x3FFC1, length=64, status=OUT_OF_RANGE) count == 1; delta(framDriver.ReadsCompleted) == 1; delta(framDriver.WritesCompleted) == 1; delta(framDriver.RequestsRejected) == 1; event framTester.VerifyDone count == 1.
 Evidence:  Last-byte write/verify OK; one OUT_OF_RANGE pair (tester return + UUT event); ReadsCompleted +1 only.
-Fault knobs: corrupt_block
+Fault planted faults: corrupt_block
 
 ID:        L2-3
 Title:     Completion returns on the requesting port index
@@ -80,7 +80,7 @@ Procedure: MARK(50); bracket (2 samples); WRITE_PATTERN(1, 0x010000, 32, 0x3005)
 Window:    Marker(id=50) … Marker(id=51)
 Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(client=1, offset=0x010000, length=32, status=OK) count == 1; event framTester.VerifyDone(client=1, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; event framTester.VerifyDone(client=0, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; event framTester.WriteDone(client=0) count == 0; delta(framDriver.ReadsCompleted) == 2; delta(framDriver.WritesCompleted) == 1.
 Evidence:  Completions carry client=1 for the client-1 requests and client=0 for the client-0 read of the same data.
-Fault knobs: none
+Fault planted faults: none
 
 ID:        L2-5
 Title:     Full-device write/verify sweep
@@ -90,7 +90,7 @@ Procedure: MARK(60); bracket (2 samples); SWEEP(0x5005, 4096, 0x5005) (chunks ch
 Window:    Marker(id=60) … Marker(id=61)
 Pass rule: complete: STD. all_of: ABS; event framTester.SweepDone(kind=WRITE, chunks=4096, errors=0) count == 1; event framTester.SweepDone(kind=VERIFY, chunks=4096, errors=0) count == 1; event framTester.SweepDone(kind=WRITE) precedes event framTester.SweepDone(kind=VERIFY); delta(framDriver.WritesCompleted) == 4096; delta(framDriver.ReadsCompleted) == 4096; delta(framDriver.SpiErrors) == 0; delta(framDriver.RequestsRejected) == 0. metrics: delta(framTester.BytesVerified) == 262144; t(SweepDone VERIFY) − t(SWEEP sent) ≤ 1200 s, both on the FSW clock: t(SWEEP sent) is the SWEEP's own `cmdDisp.OpCodeDispatched` row (the ground sending precedes it by the uplink latency, < 1 s); the checker records the elapsed value in its notes.
 Evidence:  Two SweepDone events with chunks=4096 errors=0; counters +4096/+4096.
-Fault knobs: verify_wrong_seed, short_sweep
+Fault planted faults: verify_wrong_seed, short_sweep
 
 ID:        L3-1
 Title:     Retention across MCU reset
@@ -100,7 +100,7 @@ Procedure: MARK(70); bracket (2 samples); WRITE_PATTERN(0, 0x020000, 64, 0x7007)
 Window:    W1 = Marker(id=70) … Marker(id=71); R = Marker(id=71) … Marker(id=72) (reset window, no commands_sent check — the OpenOCD action is not a command); W2 = Marker(id=72) … Marker(id=73)
 Pass rule: complete (W1, W2): STD; (R): both markers present; R is split at the reboot — the exporter's epoch boundary (FSW time falls back by > 1 s), not at any UUT event; boot-1 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot1 == last(framer.DroppedPackets) in W1 (no drop after W1 closed); boot-2 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot2 == 0 (boot-zero counter; a dropped startup event would count here). all_of: W1: ABS; event framTester.WriteDone(client=0, offset=0x020000, length=64, status=OK) count == 1. R: event framDriver.StartupComplete count == 1; event framDriver.DeviceIdMismatch count == 0; event framDriver.BlockProtectSet count == 0; event framDriver.StartupReadFailed count == 0; last(framDriver.StartupState) == COMPLETE. W2: ABS; event framTester.VerifyDone(client=0, offset=0x020000, length=64, status=OK, mismatches=0) count == 1; first(framDriver.WritesCompleted) == 0 (boot-zero counter → the MCU rebooted); last(rg8Hz.CycleCount) in W2 < last(rg8Hz.CycleCount) in W1 (Health packet id 1 polled by the two `tlm.SEND_PKT(Health)` commands in the procedure; UUT-independent reboot evidence).
 Evidence:  WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) after it.
-Fault knobs: corrupt_block
+Fault planted faults: corrupt_block
 Risk:      bench note — after an OpenOCD reset with the GDS attached, command dispatch has been seen to stall (uplink artifact); if reproduced in the dry run the harness restarts the GDS between MARK(71) and MARK(72); the run's `raw/` then holds two GDS log directories, the exporter merges them in `recv` order, `export-counts.json` reports both, and the restart time is recorded in §8.
 
 ID:        L5-1
@@ -111,7 +111,7 @@ Procedure: MARK(80); bracket (2 samples); BURST(1, 0x030000, 64, 0x8008, BACK_TO
 Window:    Marker(id=80) … Marker(id=81)
 Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1; event framDriver.RequestRejected(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1; event framTester.VerifyDone(client=1, offset=0x030000, length=64, status=OK) count == 1 (`mismatches` unconstrained: the block was never written with seed 0x8008); delta(framDriver.ReadsCompleted) == 1; delta(framDriver.RequestsRejected) == 1; delta(framDriver.WritesCompleted) == 0.
 Evidence:  One BUSY return + one UUT BUSY event; exactly one completion (the first read).
-Fault knobs: busy_skip
+Fault planted faults: busy_skip
 
 ID:        L5-2
 Title:     Zero-length and over-size requests are rejected without completion
@@ -121,7 +121,7 @@ Procedure: MARK(90); bracket (2 samples); REQUEST_RAW(READ, 0, 0x000100, 0); REQ
 Window:    Marker(id=90) … Marker(id=91)
 Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=READ, client=0, offset=0x100, length=0, status=OUT_OF_RANGE) count == 1; event framTester.RequestReturned(op=WRITE, client=0, offset=0x100, length=65, status=OUT_OF_RANGE) count == 1; event framDriver.RequestRejected(status=OUT_OF_RANGE) count == 2; delta(framDriver.RequestsRejected) == 2; delta(framDriver.ReadsCompleted) == 0; delta(framDriver.WritesCompleted) == 0; event framTester.WriteDone count == 0; event framTester.VerifyDone count == 0.
 Evidence:  Two OUT_OF_RANGE pairs, no RawDone; no completion; counters +2 rejected, +0 completed.
-Fault knobs: none
+Fault planted faults: none
 
 ID:        L5-3
 Title:     Request issued from inside a completion is accepted
@@ -131,7 +131,7 @@ Procedure: MARK(100); bracket (2 samples); CHAIN(0, 0x034000, 64, 0xA00A); brack
 Window:    Marker(id=100) … Marker(id=101)
 Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(client=0, offset=0x034000, length=64, status=OK) count == 1; event framTester.VerifyDone(client=0, offset=0x034000, length=64, status=OK, mismatches=0) count == 1; event framDriver.RequestRejected count == 0; delta(framDriver.RequestsRejected) == 0; delta(framDriver.WritesCompleted) == 1; delta(framDriver.ReadsCompleted) == 1.
 Evidence:  Write completion immediately followed by the chained read's completion, no BUSY.
-Fault knobs: none
+Fault planted faults: none
 
 ID:        L6-1
 Title:     Negative control — the verifier detects a wrong pattern
@@ -141,7 +141,7 @@ Procedure: MARK(110); bracket (2 samples); WRITE_PATTERN(0, 0x035000, 64, 0xB00B
 Window:    Marker(id=110) … Marker(id=111)
 Pass rule: complete: STD. all_of: ABS; event framTester.VerifyDone(client=0, offset=0x035000, length=64, status=OK, mismatches=64) count == 1 (xorshift32 differs in every byte for adjacent seeds over 64 bytes — generator property, checked offline and recorded in §8); delta(framDriver.ReadsCompleted) == 1.
 Evidence:  VerifyDone with mismatches=64.
-Fault knobs: none
+Fault planted faults: none
 
 ID:        L7-1
 Title:     Final state for independent verification
@@ -151,7 +151,7 @@ Procedure: MARK(120); bracket (2 samples); WRITE_PATTERN(0, 0x3FF00, 64, 0xF1F1)
 Window:    Marker(id=120) … Marker(id=121)
 Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(status=OK) count == 4; event framTester.DumpData count == 32; for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k…+7) — computed by the auditor from the §0 generator, not from any harness output; delta(framDriver.SpiErrors) == 0; delta(framDriver.RequestsRejected) == 0; event framDriver.RequestRejected count == 0.
 Evidence:  32 DumpData events whose 256 bytes equal the auditor's regenerated image.
-Fault knobs: final_wrong_image (uut-state)
+Fault planted faults: final_wrong_image (uut-state)
 
 ## 4 Traceability
 | REQ | Tests | Note |
@@ -187,7 +187,7 @@ Waivers: W2 — SPI_CONFIG_ERR / other SPI-driver fault paths (009, 014, 021 non
 - Startup: `StartupState == COMPLETE` within 10 s of reset (L3-1).
 
 ## 6 Fault menu
-See `faults-menu.json` (same directory). max_count 2; knobs: verify_wrong_seed (harness-expectation), corrupt_block (uut-state), final_wrong_image (uut-state), short_sweep (stimulus), busy_skip (stimulus); 6 tests covered.
+See `faults-menu.json` (same directory). max_count 2; planted faults: verify_wrong_seed (harness-expectation), corrupt_block (uut-state), final_wrong_image (uut-state), short_sweep (stimulus), busy_skip (stimulus); 6 tests covered.
 
 ## 7 Not covered
 - SPI-driver faults (REQ-009/014, REQ-021 non-BUSY cases), device-ID mismatch (REQ-013), block protect (REQ-022): no plantable mechanism on this bench; unit tests only (W2). REQ-021 SPI_BUSY_ERR: plantable in principle, not attempted (§8 #6).
@@ -207,12 +207,12 @@ See `faults-menu.json` (same directory). max_count 2; knobs: verify_wrong_seed (
 8. 2026-10-29 designer — framer burst mitigation (a): test-build `FramerConfig::FRAMER_TX_BUFFER_SIZE = 256`; every command fits one buffer; drops still read UNVERIFIED via STD.
 7. 2026-10-29 designer — the deployment additions (spiDriver, framDriver, framTester, Fram packet + 1 Hz pktSend, cycler connection, DmaChannel entries, NUM_TLM_PACKETS) are the designer's and go to the human gate for confirmation.
 8. 2026-10-29 human gate (Michael Starch) — (a) no DMA wording: the requirement is the asynchronous SPI interface only; (b) EXPECTED_DEVICE_ID is a deployment configuration item (family-wide), default = bench -50SXI reply; (c) BP0/BP1 WARNING_HI with meaning text; (d) REQ-019 retired to a design constraint, REQ-020 retired to test design (this plan); (e) retention across reset is REQ-023, verification Inspection as a one-off (L3-1); (f) SDD Configure as snippets, Behavior shortened. Traceability updated accordingly; otherwise approved "good job".
-9. 2026-10-30 builder (stage 2) — harness configuration for the `short_sweep` and `busy_skip` knobs needed command arguments the harness did not expose: `SWEEP(seed, chunks: U16, verifySeed: U32)` (plan: 4096, verifySeed = seed) and `BURST(client, offset, length, seed, mode: BurstMode)` (plan: BACK_TO_BACK; SEQUENTIAL issues the second read from the first completion). FramTester is harness-owned; the UUT is untouched. Also found at stage 2: FPP `match` forbids one instance on two indices of a matched port array, so the deployment reaches `framDriver.read/write[k]` through two pass-through `CuriosityReference.FramClient` instances (`framClient0/1`); event names in the record are unchanged. Mode B reviewer to confirm both.
+9. 2026-10-30 builder (stage 2) — harness configuration for the `short_sweep` and `busy_skip` planted faults needed command arguments the harness did not expose: `SWEEP(seed, chunks: U16, verifySeed: U32)` (plan: 4096, verifySeed = seed) and `BURST(client, offset, length, seed, mode: BurstMode)` (plan: BACK_TO_BACK; SEQUENTIAL issues the second read from the first completion). FramTester is harness-owned; the UUT is untouched. Also found at stage 2: FPP `match` forbids one instance on two indices of a matched port array, so the deployment reaches `framDriver.read/write[k]` through two pass-through `CuriosityReference.FramClient` instances (`framClient0/1`); event names in the record are unchanged. Mode B reviewer to confirm both.
 10. 2026-10-30 builder (stage 2) — L0-1 status-register mask: bench reads 0x40; datasheet 002-26764 Rev.*D status-register table: bit 6 non-writable, always ‘1’ → predicate mask 0xFD → 0xBD (the plan had flagged this value for stage-2 confirmation). Window slicing (bench fact): inside one command the archive holds the handler's event (Marker) first, then that command's `cmdDisp.OpCodeCompleted` and `OpCodeDispatched` rows with sub-millisecond later timestamps (reverse of logical order). Window rows therefore run from the `Marker(START)` row through the `Marker(END)` row plus the END MARK's own two cmdDisp rows; `precedes` compares timestamps, archive index on ties.
 11. 2026-10-30 builder (stage 2) — L2-5 time budget: dry/clean measured `framDriver.WritesCompleted` advancing 9 per second during the sweep (one 64-byte write = WREN + WRITE frames, each completion delivered on a later `spiDriver.activeIn` call — deployment cadence, UUT-independent), so 2 × 4096 chunks need ≈ 15 min; budget 120 s → 1200 s, harness wait 1200 s. The 120 s figure was a design-time estimate; the sweep is otherwise unchanged (full device, one request outstanding).
 12. 2026-10-30 builder (stage 2) — dry/clean found L5-3 (CHAIN at 0x040000) and L6-1 (0x050000) addressed past the array: 0x040000 = FRAM_SIZE, so the UUT rejected them OUT_OF_RANGE (correct behaviour; a plan defect). Offsets moved inside the array and away from every other test's block: L5-3 → 0x034000, L6-1 → 0x035000. Pass rules unchanged otherwise.
 13. 2026-10-30 builder (stage 2) — dry runs 1–2 (bench facts): (a) `framDriver.RequestRejected` is throttled at 5 per boot, so a second full-plan run on the same boot loses the event (L2-2); every run therefore starts from an OpenOCD `reset run` before the ground system is started. (b) FSW time restarts at 0 on reboot: the exporter adds an ordering time `t = epoch·1e6 + recv` (epoch increments when recv falls back by > 1 s) and both checkers slice windows by `t`, never by raw `recv`. Post-reboot rows can be byte-identical to pre-reboot rows (same FSW time and text), so the exporter never de-duplicates rows globally; the archive uses a single recorder (`fprime-cli events`, which logs channels and events) so no row is recorded twice. (c) The uplink stall after an OpenOCD reset with the GDS attached reproduced in dry run 2: the harness now restarts the GDS unconditionally after `StartupComplete` is in the archive and before MARK(72); the archive then holds two recorder directories merged in archive order. (d) When a START marker had to be re-sent, `commands_sent` counts from its last sending. Dry run 2 verified L3-1 retention on the bench (VerifyDone mismatches 0 after reset, WritesCompleted boot-zero, rg8Hz.CycleCount lower) and L7-1 (dump image == xorshift32(0xF1F1)).
 14. 2026-10-30 builder (stage 2, Mode B round 1 → harness pass 2) — reviewer findings applied: predicate keys in both checkers are this plan's text verbatim; L2-5 time metric evaluated (clock defined above); verdict files carry `run`, `record_sha256`, `evidence`; run-start markers via reserved `MARK` ids (§1); exporter de-duplicates the recorder's repeated rows exactly (set per boot segment per recorder file), reads commands only from the sender's own log directory (`record/raw/cmd/`), reports raw archive line totals, names the FSW clock `fsw`, pairs each command with its dispatcher response; runner asserts exactly one GDS and one recorder and flashes the image (read-back verified, `record/raw/flash.log`) at run start; window START occurrence, END rows and the L3-1 reboot split defined as above; `framTester.CommandRejected` added to §0/ABS; archive layout = `<run>/record/raw/`. Known record artifact: the recorder stopped at the L3-1 ground-system restart may have logged its last 1 Hz packet partially (rows are written one channel at a time), so one boot-2 Fram packet in R can carry fewer than its full channel set; R's predicates use `last()` values only and are unaffected. Plan changes since the gate (#11 budget, #12 offsets, #14) are listed for the human with the delivery.
-15. 2026-10-30 builder (stage 2, Mode B round 2 → pass 2b) — run ids are neutral (`dry-1`…`dry-6`; the knob → directory mapping lives only in the orchestration script) after the builder's own grep found `dry-<knob>` ids in `runner/`, `verdicts.json` and, via `MARK(crc32(run id))`, invertibly in the record. Also applied: `precedes` tie-break by archive index only (builder checker), `delta` ≥ 2 samples wording (above), marker-collision note (§1), exporter lists torn packets (< 12 rows) in `export-counts.json`, runner stops the recorder right after a Fram packet completes before the L3-1 ground-system restart (takes effect in the next campaign; pass-2b records predate it). Flash step for stage 3 (manifest `.bin`, `dump_image` read-back + sha256 in `flash.log`) is owed before any run-for-record.
+15. 2026-10-30 builder (stage 2, Mode B round 2 → pass 2b) — run ids are neutral (`dry-1`…`dry-6`; the planted fault → directory mapping lives only in the orchestration script) after the builder's own grep found `dry-<planted fault>` ids in `runner/`, `verdicts.json` and, via `MARK(crc32(run id))`, invertibly in the record. Also applied: `precedes` tie-break by archive index only (builder checker), `delta` ≥ 2 samples wording (above), marker-collision note (§1), exporter lists torn packets (< 12 rows) in `export-counts.json`, runner stops the recorder right after a Fram packet completes before the L3-1 ground-system restart (takes effect in the next campaign; pass-2b records predate it). Flash step for stage 3 (manifest `.bin`, `dump_image` read-back + sha256 in `flash.log`) is owed before any run-for-record.
 16. 2026-10-30 human gate (Michael Starch) — plan changes #11–#15 acknowledged and approved as one diff; REQ-023 verification method stays Inspection; test build + harness to be opened as a draft PR on fprime-community/fprime-samd-reference (not for merge).
-17. 2026-11-02 runner (stage 3) — run `fram-r1` (manifest 6a91b929, drawn by the human) VOID at run start: `faults.py` rejected the draw's `sealed/faults.json` shape (`{"manifest_sha256", "faults": {test: knob}}`, written by `seal.py draw`) with a silent exit 2 — the dry runs had only ever fed it `{"knobs": [...]}`; nothing was flashed or recorded and `sealed/` was never opened. Fix: `faults.py` reads `faults.values()` (legacy `knobs` list kept for the orchestration script) and a malformed file fails loudly (stderr without knob names, exit 2). Proven by one unsealed smoke run with `{"faults": {}}` and a scratch local draw fed to the parser. Harness re-committed, manifest re-frozen (new sha8); the human re-draws into `fram-r2/`; `fram-r1/` is left in place, bound to the superseded manifest.
+17. 2026-11-02 runner (stage 3) — run `fram-r1` (manifest 6a91b929, drawn by the human) VOID at run start: `faults.py` rejected the draw's `sealed/faults.json` shape (`{"manifest_sha256", "faults": {test: planted fault}}`, written by `seal.py draw`) with a silent exit 2 — the dry runs had only ever fed it `{"planted faults": [...]}`; nothing was flashed or recorded and `sealed/` was never opened. Fix: `faults.py` reads `faults.values()` (legacy `planted faults` list kept for the orchestration script) and a malformed file fails loudly (stderr without planted fault names, exit 2). Proven by one unsealed smoke run with `{"faults": {}}` and a scratch local draw fed to the parser. Harness re-committed, manifest re-frozen (new sha8); the human re-draws into `fram-r2/`; `fram-r1/` is left in place, bound to the superseded manifest.

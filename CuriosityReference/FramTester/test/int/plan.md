@@ -224,7 +224,7 @@ Waivers: W2 — SPI_CONFIG_ERR / other SPI-driver fault paths (009, 014, 021 non
 - L2-5: delta(framTester.BytesVerified) == 262144; t(event framTester.SweepDone(kind=VERIFY)) - t(framTester.SWEEP sent) <= 1200 s
 
 ## 6 Fault menu
-Generated from `plan_helpers.py` planted_fault declarations (`fth planted-faults-menu`): busy_skip (stimulus; L5-1); corrupt_block (uut-state; L2-1, L2-2, L3-1); final_wrong_image (uut-state; L7-1); short_sweep (stimulus; L2-5); verify_wrong_seed (harness-expectation; L2-1, L2-5).
+Generated from `plan_helpers.py` planted fault declarations (`fth planted-faults-menu`): busy_skip (stimulus; L5-1); corrupt_block (uut-state; L2-1, L2-2, L3-1); final_wrong_image (uut-state; L7-1); short_sweep (stimulus; L2-5); verify_wrong_seed (harness-expectation; L2-1, L2-5).
 
 ## 7 Not covered
 - SPI-driver faults (REQ-009/014, REQ-021 non-BUSY cases), device-ID mismatch (REQ-013), block protect (REQ-022): no plantable mechanism on this bench; unit tests only (W2). REQ-021 SPI_BUSY_ERR: plantable in principle, not attempted (§8 #6).
