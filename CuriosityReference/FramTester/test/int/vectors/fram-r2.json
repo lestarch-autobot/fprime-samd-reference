@@ -77,5 +77,5 @@
       "failed": []
     }
   },
-  "note": "L3-2 and L5-4 (added 2026-11-02 for REQ-023/REQ-007 knob-disjoint redundancy) postdate this record: UNVERIFIED (markers 74/75, 82/83 absent)."
+  "note": "L3-2 and L5-4 (added 2026-11-02 for REQ-023/REQ-007 planted fault-disjoint redundancy) postdate this record: UNVERIFIED (markers 74/75, 82/83 absent)."
 }
