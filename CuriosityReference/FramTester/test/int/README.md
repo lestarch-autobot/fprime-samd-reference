@@ -1,7 +1,7 @@
 # FramTester system test — the QUAL-FRAM plan and its stimulus
 
 This directory is the **single source of truth** for the FRAM qualification system test. By the
-Captain's layout rule (test-process skills, "Layout"): the plan, the fault planted faults and helper
+Captain's layout rule (test-process skills, "Layout"): the plan, the planted faults and helper
 predicates, the stimulus tests and the independent checker live in the deployment branch that
 hosts the test-helper component (`CuriosityReference/FramTester`), beside it; the UUT repo
 (`fprime-community/fprime-devices`, `Fram.FramDriver`) holds the component, its unit tests and
@@ -12,7 +12,7 @@ as regression vectors, each with a labelled copy of this plan under `vectors/pla
 | what | file (here) |
 |---|---|
 | plan: tests, windows, procedures, pass rules as predicate data, requirements, decision log | `plan.json` (`plan.md` is rendered from it: `fth render-plan plan.json`, never hand-edited) |
-| registered helper predicates and fault planted faults (`@helper`, `@planted_fault`) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
+| registered helper predicates and planted faults (`@helper`, `@planted_fault`) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
 | generated fault menu | `faults-menu.json` (`fth planted-faults-menu plan.json`, never hand-edited) |
 | bench command lines (OpenOCD, GDS, recorder, sender) | `bench.json` |
 | pytest stimulus, one test per plan id | `test_fram_plan.py` |
@@ -41,7 +41,7 @@ the only waits are pacing (the plan's `bracket (2 samples)` = two 1 Hz Fram pack
 Verdicts come from replaying the record against the plan (`fth evaluate` / `fth audit`), where every
 pass rule is data and the auditor can re-run it without the bench.
 
-Fault planted faults are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
+Planted faults are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
 drawn test **only**; the test bodies do not know whether a planted fault is active.
 
 ## Running
