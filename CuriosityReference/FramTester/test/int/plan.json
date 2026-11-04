@@ -755,8 +755,8 @@
     },
     {
       "id": "L3-2",
-      "title": "Retention across MCU reset, second block (planted fault-free, self-contained)",
-      "purpose": "Shows that a block written immediately before its own MCU reset reads back equal after it, from a test no fault planted fault can alter and that depends on no other test's device content.",
+      "title": "Retention across MCU reset, second block (no planted fault, self-contained)",
+      "purpose": "Shows that a block written immediately before its own MCU reset reads back equal after it, from a test no planted fault can alter and that depends on no other test's device content.",
       "covers": [
         "REQ-FramDriver-023"
       ],
@@ -930,8 +930,8 @@
     },
     {
       "id": "L5-4",
-      "title": "Second request while a transfer is in progress is rejected BUSY (client 0, planted fault-free)",
-      "purpose": "Shows the BUSY rejection of REQ-007 again on client 0 from a test no fault planted fault can alter.",
+      "title": "Second request while a transfer is in progress is rejected BUSY (client 0, no planted fault)",
+      "purpose": "Shows the BUSY rejection of REQ-007 again on client 0 from a test no planted fault can alter.",
       "covers": [
         "REQ-FramDriver-007",
         "REQ-FramDriver-008"

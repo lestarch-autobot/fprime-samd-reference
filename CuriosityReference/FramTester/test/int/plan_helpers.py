@@ -1,8 +1,8 @@
-"""Pilot plan helpers for QUAL-FRAM: helper predicates and fault planted_faults.
+"""Pilot plan helpers for QUAL-FRAM: helper predicates and planted faults.
 
 Loaded by ``fth`` through ``plan.json: helpers_module``. Helpers receive a
 ``HelperContext`` (``ctx.window``, ``ctx.windows``, ``ctx.segment(name, boot)``) and return
-``(holds, seen_text)`` or ``(holds, seen_text, refs, unverified)``. PlantedFaults receive
+``(holds, seen_text)`` or ``(holds, seen_text, refs, unverified)``. Planted faults receive
 ``(test_id, command_name, args)`` and return rewritten ``args`` or a list of
 ``(command_name, args)`` to send instead. ``fails`` lists come from the sealed fault menu
 (``aux/manifest-d994623e.json``) and are per test.
@@ -81,11 +81,11 @@ def dump_image_matches_xorshift32(ctx, seed, base, chunk, count):
     return holds, text, refs
 
 
-# ---- fault planted_faults (menu is generated from these: ``fth planted-faults-menu plan.json``) ----
+# ---- planted faults (menu is generated from these: ``fth planted-faults-menu plan.json``) ----
 
 # ---------------------------------------------------------------------------------------
 # Fault planted faults. ``command_name`` is the spelling the stimulus passes to ``send()`` (the
-# ``framTester.X`` short form; the deployment prefix is added later by the sender). Each planted_fault
+# ``framTester.X`` short form; the deployment prefix is added later by the sender). Each planted fault
 # rewrites only the named command of the named test and returns ``args`` untouched otherwise.
 # ---------------------------------------------------------------------------------------
 def _is(command_name, short):
@@ -130,7 +130,7 @@ def corrupt_block(test_id, command_name, args):
         client, offset, length, seed = args
         return [(command_name, args), (command_name, [1, offset, length, (seed + 7) & 0xFFFFFFFF])]
     if test_id == "L3-1" and _is(command_name, "framTester.WRITE_PATTERN"):
-        # inside W1, before the reset (the marker command is never handed to a planted_fault — iter-4 ADV-E #1)
+        # inside W1, before the reset (the marker command is never handed to a planted fault — iter-4 ADV-E #1)
         client, offset, length, seed = args
         return [(command_name, args), (command_name, [1, offset, length, (seed + 7) & 0xFFFFFFFF])]
     return args

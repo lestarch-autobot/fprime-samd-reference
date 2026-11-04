@@ -1,14 +1,14 @@
 """Stimulus for the FRAM qualification plan (QUAL-FRAM) — one pytest per plan test, in plan order.
 
-The plan (ids, windows, commands, pass rules, planted_faults) is data in ``plan.json`` beside this file
-(planted_faults and helper predicates in ``plan_helpers.py``); this module only *sends* what each test's
+The plan (ids, windows, commands, pass rules, planted faults) is data in ``plan.json`` beside this file
+(planted faults and helper predicates in ``plan_helpers.py``); this module only *sends* what each test's
 procedure lists. No
 result is asserted here: ``fth evaluate`` / ``fth audit`` judge the sealed record afterwards.
 The only waits are pacing (the plan's ``bracket (2 samples)`` and "wait for X" steps) so that
 the next command is not sent before the device has finished the previous transfer.
 
 Fixtures (``fth.pytest_plugin``): ``window(start, end)`` sends ``framTester.MARK(start)`` /
-``MARK(end)``; ``send(name, args)`` sends one command and lets the drawn fault planted_fault rewrite or
+``MARK(end)``; ``send(name, args)`` sends one command and lets the drawn planted fault rewrite or
 insert commands for *this* test only; ``bench`` is the non-command side (OpenOCD reset, waits).
 """
 
