@@ -16,7 +16,7 @@ as regression vectors, each with a labelled copy of this plan under `vectors/pla
 | generated fault menu | `faults-menu.json` (`fth planted-faults-menu plan.json`, never hand-edited) |
 | bench command lines (OpenOCD, GDS, recorder, sender) | `bench.json` |
 | integration tests, one per plan id: stimulus inside `with window(...)`, named checks `check("<name>")`, infrastructure preconditions `require(...)`, `@pytest.mark.req(...)`; the former helper predicates are check functions here | `test_fram_plan.py` |
-| the adversary's independent checker (written from the plan text alone) | `independent_fram_checks.py` — `fth audit --independent` |
+| the adversary's independent checker (legacy: written from the plan text alone for the plan-owned pass rules; optional since phase 2 — the auditor replays the test functions) | `independent_fram_checks.py` — `fth audit --independent` (legacy plans only) |
 | plan import provenance (the approved `plan.md` the JSON was ported from) | `import/` |
 | regression verdicts this branch was ported against | `vectors/fram-r2.json` (copy of the tooling repo's `vectors/fram-r2/expected-verdicts.json`) |
 
@@ -27,7 +27,7 @@ fth verify-plan CuriosityReference/FramTester/test/int/plan.json --tests Curiosi
 fth run --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
        --bench CuriosityReference/FramTester/test/int/bench.json --tests CuriosityReference/FramTester/test/int
 fth audit --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
-          --independent CuriosityReference/FramTester/test/int/independent_fram_checks.py \
+          --tests CuriosityReference/FramTester/test/int --bench CuriosityReference/FramTester/test/int/bench.json \
           --sdd lib/fprime-devices/fprime-devices/Fram/Components/FramDriver/docs/sdd.md \
           --dictionary build-artifacts/samd21g17/CuriosityReference/dict/TopTopologyDictionary.json --project-root .
 ```
@@ -46,7 +46,10 @@ An expected UUT event that is absent is a FAIL, never UNVERIFIED. The only waits
 `bracket (2 samples)` = two 1 Hz Fram packets, and "wait for *event*" steps) so a command is not sent while
 the device is still busy with the last one. Verdicts are pytest's (`fth run` reads its junit: pass → PASS,
 failed check → FAIL, Incomplete → UNVERIFIED); the auditor re-executes the same test functions over the
-sealed record (`fth.replay`, phase 2).
+sealed record (`fth audit --tests …`: every `send()` must meet the recorded command in order, waits return at
+once, the checks are judged over the record) and diffs them per test against the runner's junit — any
+difference is a DIVERGENCE finding. A judged FAIL stands whatever else happens on the test; all failed checks
+are raised together at the test's last window; a window without a `check(...)` can never PASS.
 
 Planted faults are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
 drawn test **only**; the test bodies do not know whether a planted fault is active.
@@ -64,7 +67,7 @@ fth run --run-dir rfr/<run-id> --manifest manifest.json \
         --bench CuriosityReference/FramTester/test/int/bench.json \
         --tests CuriosityReference/FramTester/test/int
 fth audit --run-dir rfr/<run-id> --manifest manifest.json --plan CuriosityReference/FramTester/test/int/plan.json \
-          --independent CuriosityReference/FramTester/test/int/independent_fram_checks.py
+          --tests CuriosityReference/FramTester/test/int --bench CuriosityReference/FramTester/test/int/bench.json
 ```
 
 `fth run` verifies the manifest, flashes the manifest image (OpenOCD program + `dump_image` read-back,
@@ -80,12 +83,15 @@ pytest CuriosityReference/FramTester/test/int -p fth.pytest_plugin --fth-dry-run
        --fth-run-dir /tmp/dry --fth-manifest manifest.json
 ```
 
-Replay only (judge an existing sealed record, e.g. the regression vector):
+Replay only (judge an existing sealed record with these tests, no device — development):
 
 ```bash
-fth evaluate CuriosityReference/FramTester/test/int/plan.json <fprime-testing-harness>/vectors/fram-r2/record -o verdicts.json
+fth run --run-dir <scratch> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
+        --bench CuriosityReference/FramTester/test/int/bench.json --tests CuriosityReference/FramTester/test/int \
+        --replay-record <fprime-testing-harness>/vectors/bench-clean4/record      # runner/verdicts.json from the junit
 fth vectors  <fprime-testing-harness>/vectors               # gate: each vector judged against its vendored plan copy
 ```
+(`fth evaluate` is the legacy engine and refuses this plan: its checks live in the tests.)
 
 ## Bench facts the plan depends on
 
