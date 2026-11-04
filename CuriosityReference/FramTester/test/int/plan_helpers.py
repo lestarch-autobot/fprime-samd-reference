@@ -3,8 +3,10 @@ check functions beside the checks that use them).
 
 Loaded by ``fth`` through ``plan.json: helpers_module``. Planted faults receive
 ``(test_id, command_name, args)`` and return rewritten ``args`` or a list of
-``(command_name, args)`` to send instead. ``fails`` lists come from the sealed fault menu
-(``aux/manifest-d994623e.json``) and are per test.
+``(command_name, args)`` to send instead. Each ``fails`` list names, per test and verbatim, the
+checks of ``test_fram_plan.py`` the fault must break; ``faults-menu.json`` is generated FROM these
+decorators (``fth planted-faults-menu plan.json``) and ``fth verify-plan --tests`` / the ``fth run``
+pre-flight refuse a name no test declares.
 """
 from fth.registry import planted_fault
 

@@ -42,7 +42,7 @@ Covers:    REQ-FramDriver-012, REQ-FramDriver-015, REQ-FramDriver-017
 Setup:     Image flashed, GDS attached, ≥ 2 s after reset (startup reads complete).
 Procedure: MARK(10); bracket (2 samples); bracket; MARK(11).
 Window:    Marker(id=10) … Marker(id=11)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L0_1).
 Evidence:  Channel strip StartupState / DeviceIdMatch / StatusRegister (boot events are emitted before the GDS attaches and are not in the archive — the standing channels are the evidence).
 Planted faults:none
 
@@ -53,7 +53,7 @@ Covers:    — (entry gate; harness completeness)
 Setup:     As L0-1.
 Procedure: MARK(20); bracket (2 samples); MARK(0xA5A5); bracket; MARK(21).
 Window:    Marker(id=20) … Marker(id=21)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L0_2).
 Evidence:  Three Marker events in order.
 Planted faults:none
 
@@ -64,7 +64,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-003, REQ-FramD
 Setup:     L0-1 passed.
 Procedure: MARK(30); bracket (2 samples); WRITE_PATTERN(0, 0x000000, 64, 0x1001); READ_VERIFY(0, 0x000000, 64, 0x1001); bracket (2 samples); MARK(31).
 Window:    Marker(id=30) … Marker(id=31)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L2_1).
 Evidence:  WriteDone(OK) → VerifyDone(OK, 0 mismatches); counters +1/+1.
 Planted faults:verify_wrong_seed, corrupt_block
 
@@ -75,7 +75,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-006, REQ-FramD
 Setup:     L2-1 passed.
 Procedure: MARK(40); bracket (2 samples); WRITE_PATTERN(0, 0x3FFC0, 64, 0x2002); READ_VERIFY(0, 0x3FFC0, 64, 0x2002); REQUEST_RAW(READ, 0, 0x3FFC1, 64); bracket; MARK(41).
 Window:    Marker(id=40) … Marker(id=41)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L2_2).
 Evidence:  Last-byte write/verify OK; one OUT_OF_RANGE pair (tester return + UUT event); ReadsCompleted +1 only.
 Planted faults:corrupt_block
 
@@ -86,7 +86,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-004, REQ-FramD
 Setup:     L2-1 passed.
 Procedure: MARK(50); bracket (2 samples); WRITE_PATTERN(1, 0x010000, 32, 0x3005); READ_VERIFY(1, 0x010000, 32, 0x3005); READ_VERIFY(0, 0x010000, 32, 0x3005); bracket; MARK(51).
 Window:    Marker(id=50) … Marker(id=51)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L2_3).
 Evidence:  Completions carry client=1 for the client-1 requests and client=0 for the client-0 read of the same data. ACCEPTED return before WriteDone; read-back equal on both clients (REQ-003/005 redundancy). Redundancy note: REQ-001/002/003/005 added for planted fault-disjoint redundancy (L2-3 has no planted faults; L2-1 and L2-5 share `verify_wrong_seed`): the client-1 write then read-back equality on both clients is a nominal write (REQ-002) and read (REQ-001), the ACCEPTED return precedes the completion (REQ-005), and read-back equality is the system-level evidence of the datasheet command sequence (REQ-003).
 Planted faults:none
 
@@ -97,7 +97,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-010, REQ-FramD
 Setup:     L2-1 passed.
 Procedure: MARK(60); bracket (2 samples); SWEEP(0x5005, 4096, 0x5005) (chunks chained from inside completions, §0); wait for SweepDone(VERIFY) (≤ 1200 s); bracket; MARK(61).
 Window:    Marker(id=60) … Marker(id=61)
-Pass rule: metrics: delta(framTester.BytesVerified) == 262144; t(event framTester.SweepDone(kind=VERIFY)) - t(framTester.SWEEP sent) <= 1200 s (the ground sending precedes it by the uplink latency, < 1 s).
+Pass rule: named checks declared in the integration test (test_L2_5). metrics: delta(framTester.BytesVerified) == 262144; t(event framTester.SweepDone(kind=VERIFY)) - t(framTester.SWEEP sent) <= 1200 s (the ground sending precedes it by the uplink latency, < 1 s).
 Evidence:  Two SweepDone events with chunks=4096 errors=0; counters +4096/+4096.
 Planted faults:verify_wrong_seed, short_sweep
 
@@ -108,7 +108,7 @@ Covers:    REQ-FramDriver-023, REQ-FramDriver-012, REQ-FramDriver-015, REQ-FramD
 Setup:     L2-1 passed. GDS events listener attached before the reset.
 Procedure: MARK(70); bracket (2 samples); WRITE_PATTERN(0, 0x020000, 64, 0x7007); tlm.SEND_PKT(Health=1); bracket; MARK(71); wait until Marker(id=71) and its OpCodeCompleted are in the archive, then 1 s more (framer flushes at the 1 Hz tick); OpenOCD `reset run` (no power cycle: bench constraint); wait for last(framDriver.StartupState) == COMPLETE (≤ 10 s); MARK(72); bracket (2 samples); tlm.SEND_PKT(Health=1); READ_VERIFY(0, 0x020000, 64, 0x7007); bracket; MARK(73).
 Window:    W1 = Marker(id=70) … Marker(id=71); R = Marker(id=71) … Marker(id=72) (reset window); W2 = Marker(id=72) … Marker(id=73)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L3_1).
 Evidence:  WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) after it.
 Planted faults:corrupt_block
 Risk:      bench note — after an OpenOCD reset with the GDS attached, command dispatch has been seen to stall (uplink artifact); if reproduced in the dry run the harness restarts the GDS between MARK(71) and MARK(72); the run's `raw/` then holds two GDS log directories, the exporter merges them in `recv` order, `export-counts.json` reports both, and the restart time is recorded in §8.
@@ -120,7 +120,7 @@ Covers:    REQ-FramDriver-023
 Setup:     L3-1 passed (its reset and recovery done). GDS events listener attached before the reset.
 Procedure: MARK(74); bracket (2 samples); WRITE_PATTERN(0, 0x010000, 32, 0x3003); tlm.SEND_PKT(Health=1); bracket; MARK(75); wait until Marker(id=75) and its OpCodeCompleted are in the archive, then 1 s more (framer flushes at the 1 Hz tick); OpenOCD `reset run` (no power cycle: bench constraint); wait for last(framDriver.StartupState) == COMPLETE (≤ 10 s); MARK(76); bracket (2 samples); tlm.SEND_PKT(Health=1); READ_VERIFY(0, 0x010000, 32, 0x3003); bracket; MARK(77).
 Window:    W1 = Marker(id=74) … Marker(id=75); R = Marker(id=75) … Marker(id=76) (reset window); W2 = Marker(id=76) … Marker(id=77)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L3_2).
 Evidence:  WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) on the same block after it. Redundancy note (Captain's rule for REQ-023): L3-1 carries `corrupt_block`; L3-2 has no planted faults, writes and verifies its own block (0x010000, seed 0x3003) around its own reset, so no other test's content (L2-5's SWEEP rewrites the whole array) can disturb it. Region map note (iter-4): 0x010000 is also written by L2-3 (client 1, seed 0x3005 — distinct from L3-2's 0x3003 so neither write can be a no-op for the other); L7-1's final image (0x3FF00..) overlaps L2-2's block at 0x3FFC0, rewritten each run — no verdict ripple, both verify their own write.
 Planted faults:none
 Risk:      bench note — after an OpenOCD reset with the GDS attached, command dispatch has been seen to stall (uplink artifact); if reproduced in the dry run the harness restarts the GDS between MARK(71) and MARK(72); the run's `raw/` then holds two GDS log directories, the exporter merges them in `recv` order, `export-counts.json` reports both, and the restart time is recorded in §8.
@@ -132,7 +132,7 @@ Covers:    REQ-FramDriver-007, REQ-FramDriver-008
 Setup:     L2-1 passed.
 Procedure: MARK(80); bracket (2 samples); BURST(1, 0x030000, 64, 0x8008, BACK_TO_BACK); bracket; MARK(81).
 Window:    Marker(id=80) … Marker(id=81)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L5_1).
 Evidence:  One BUSY return + one UUT BUSY event; exactly one completion (the first read).
 Planted faults:busy_skip
 
@@ -143,7 +143,7 @@ Covers:    REQ-FramDriver-007, REQ-FramDriver-008
 Setup:     L5-1 done.
 Procedure: MARK(82); bracket (2 samples); BURST(0, 0x031000, 64, 0x8118, BACK_TO_BACK); bracket; MARK(83).
 Window:    Marker(id=82) … Marker(id=83)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L5_4).
 Evidence:  One BUSY return + one UUT BUSY event; exactly one completion (the first read). Redundancy note: Redundancy for REQ-007 (Captain's rule): L5-1 carries `busy_skip`; L5-4 has no planted faults. Same BURST shape on the other client index and an unwritten block.
 Planted faults:none
 
@@ -154,7 +154,7 @@ Covers:    REQ-FramDriver-006, REQ-FramDriver-008, REQ-FramDriver-016
 Setup:     L2-1 passed.
 Procedure: MARK(90); bracket (2 samples); REQUEST_RAW(READ, 0, 0x000100, 0); REQUEST_RAW(WRITE, 0, 0x000100, 65); bracket; MARK(91).
 Window:    Marker(id=90) … Marker(id=91)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L5_2).
 Evidence:  Two OUT_OF_RANGE pairs, no RawDone; no completion; counters +2 rejected, +0 completed.
 Planted faults:none
 
@@ -165,7 +165,7 @@ Covers:    REQ-FramDriver-010
 Setup:     L2-1 passed.
 Procedure: MARK(100); bracket (2 samples); CHAIN(0, 0x034000, 64, 0xA00A); bracket; MARK(101).
 Window:    Marker(id=100) … Marker(id=101)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L5_3).
 Evidence:  Write completion immediately followed by the chained read's completion, no BUSY.
 Planted faults:none
 
@@ -176,7 +176,7 @@ Covers:    — (checker validity)
 Setup:     L2-5 passed (block 0x035000 holds seed 0x5005 from the sweep; L6-1 rewrites it).
 Procedure: MARK(110); bracket (2 samples); WRITE_PATTERN(0, 0x035000, 64, 0xB00B); READ_VERIFY(0, 0x035000, 64, 0xB00C); bracket; MARK(111).
 Window:    Marker(id=110) … Marker(id=111)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L6_1).
 Evidence:  VerifyDone with mismatches=64.
 Planted faults:none
 
@@ -187,7 +187,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-020
 Setup:     All other tests done.
 Procedure: MARK(120); bracket (2 samples); WRITE_PATTERN(0, 0x3FF00, 64, 0xF1F1); WRITE_PATTERN(0, 0x3FF40, 64, 0xF1F1); WRITE_PATTERN(0, 0x3FF80, 64, 0xF1F1); WRITE_PATTERN(0, 0x3FFC0, 64, 0xF1F1); DUMP(0x3FF00 + 8k, 8) for k = 0..31, DUMP(k+1) sent only after DumpData(offset=0x3FF00+8k) is in the archive (≥ 50 ms apart); bracket; MARK(121).
 Window:    Marker(id=120) … Marker(id=121)
-Pass rule: 
+Pass rule: named checks declared in the integration test (test_L7_1).
 Evidence:  32 DumpData events whose 256 bytes equal the auditor's regenerated image.
 Planted faults:final_wrong_image
 
