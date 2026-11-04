@@ -84,7 +84,7 @@ def dump_image_matches_xorshift32(ctx, seed, base, chunk, count):
 # ---- planted faults (menu is generated from these: ``fth planted-faults-menu plan.json``) ----
 
 # ---------------------------------------------------------------------------------------
-# Fault planted faults. ``command_name`` is the spelling the stimulus passes to ``send()`` (the
+# Planted faults. ``command_name`` is the spelling the stimulus passes to ``send()`` (the
 # ``framTester.X`` short form; the deployment prefix is added later by the sender). Each planted fault
 # rewrites only the named command of the named test and returns ``args`` untouched otherwise.
 # ---------------------------------------------------------------------------------------
