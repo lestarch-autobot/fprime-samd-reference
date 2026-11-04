@@ -42,7 +42,7 @@ Covers:    REQ-FramDriver-012, REQ-FramDriver-015, REQ-FramDriver-017
 Setup:     Image flashed, GDS attached, ≥ 2 s after reset (startup reads complete).
 Procedure: MARK(10); bracket (2 samples); bracket; MARK(11).
 Window:    Marker(id=10) … Marker(id=11)
-Pass rule: complete: STD. all_of: ABS; last(framDriver.StartupState) == COMPLETE; last(framDriver.DeviceIdMatch) == true; last(framDriver.StatusRegister) & 0x0C == 0 (BP1/BP0 clear; datasheet 002-26764 Rev.*D Table 5 — bench value to confirm at stage 2); last(framDriver.StatusRegister) & 0xBD == 0x00 (WEL bit 1 may be set; bit 6 is non-writable and always reads ‘1’ per the status-register table of 002-26764 Rev.*D — bench value 0x40 confirmed at stage 2).
+Pass rule: 
 Evidence:  Channel strip StartupState / DeviceIdMatch / StatusRegister (boot events are emitted before the GDS attaches and are not in the archive — the standing channels are the evidence).
 Planted faults:none
 
@@ -53,7 +53,7 @@ Covers:    — (entry gate; harness completeness)
 Setup:     As L0-1.
 Procedure: MARK(20); bracket (2 samples); MARK(0xA5A5); bracket; MARK(21).
 Window:    Marker(id=20) … Marker(id=21)
-Pass rule: complete: STD; commands_sent == 3. all_of: event framTester.Marker(id=0xA5A5) count == 1; event framTester.Marker(id=20) precedes event framTester.Marker(id=0xA5A5); event framTester.Marker(id=0xA5A5) precedes event framTester.Marker(id=21).
+Pass rule: 
 Evidence:  Three Marker events in order.
 Planted faults:none
 
@@ -64,7 +64,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-003, REQ-FramD
 Setup:     L0-1 passed.
 Procedure: MARK(30); bracket (2 samples); WRITE_PATTERN(0, 0x000000, 64, 0x1001); READ_VERIFY(0, 0x000000, 64, 0x1001); bracket (2 samples); MARK(31).
 Window:    Marker(id=30) … Marker(id=31)
-Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=WRITE, client=0, offset=0, length=64, status=ACCEPTED) count == 1; event framTester.RequestReturned(op=WRITE, client=0, offset=0, length=64, status=ACCEPTED) precedes event framTester.WriteDone(client=0, offset=0, length=64, status=OK); event framTester.WriteDone(client=0, offset=0, length=64, status=OK) count == 1; event framTester.VerifyDone(client=0, offset=0, length=64, status=OK, mismatches=0) count == 1; event framTester.WriteDone(client=0, offset=0, length=64) precedes event framTester.VerifyDone(client=0, offset=0, length=64); delta(framDriver.WritesCompleted) == 1; delta(framDriver.ReadsCompleted) == 1; delta(framDriver.RequestsRejected) == 0; delta(framDriver.SpiErrors) == 0; event framDriver.RequestRejected count == 0; event framDriver.SpiError count == 0.
+Pass rule: 
 Evidence:  WriteDone(OK) → VerifyDone(OK, 0 mismatches); counters +1/+1.
 Planted faults:verify_wrong_seed, corrupt_block
 
@@ -75,7 +75,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-006, REQ-FramD
 Setup:     L2-1 passed.
 Procedure: MARK(40); bracket (2 samples); WRITE_PATTERN(0, 0x3FFC0, 64, 0x2002); READ_VERIFY(0, 0x3FFC0, 64, 0x2002); REQUEST_RAW(READ, 0, 0x3FFC1, 64); bracket; MARK(41).
 Window:    Marker(id=40) … Marker(id=41)
-Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(client=0, offset=0x3FFC0, length=64, status=OK) count == 1; event framTester.VerifyDone(client=0, offset=0x3FFC0, length=64, status=OK, mismatches=0) count == 1; event framTester.RequestReturned(op=READ, client=0, offset=0x3FFC1, length=64, status=OUT_OF_RANGE) count == 1; event framDriver.RequestRejected(op=READ, client=0, offset=0x3FFC1, length=64, status=OUT_OF_RANGE) count == 1; delta(framDriver.ReadsCompleted) == 1; delta(framDriver.WritesCompleted) == 1; delta(framDriver.RequestsRejected) == 1; event framTester.VerifyDone count == 1.
+Pass rule: 
 Evidence:  Last-byte write/verify OK; one OUT_OF_RANGE pair (tester return + UUT event); ReadsCompleted +1 only.
 Planted faults:corrupt_block
 
@@ -86,7 +86,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-004, REQ-FramD
 Setup:     L2-1 passed.
 Procedure: MARK(50); bracket (2 samples); WRITE_PATTERN(1, 0x010000, 32, 0x3005); READ_VERIFY(1, 0x010000, 32, 0x3005); READ_VERIFY(0, 0x010000, 32, 0x3005); bracket; MARK(51).
 Window:    Marker(id=50) … Marker(id=51)
-Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=WRITE, client=1, offset=0x010000, length=32, status=ACCEPTED) count == 1; event framTester.RequestReturned(op=WRITE, client=1, offset=0x010000, length=32, status=ACCEPTED) precedes event framTester.WriteDone(client=1, offset=0x010000, length=32, status=OK) (REQ-005 evidence: the WRITE call returned ACCEPTED (RequestReturned is emitted on return) before the completion (WriteDone) arrived); event framTester.WriteDone(client=1, offset=0x010000, length=32, status=OK) count == 1; event framTester.VerifyDone(client=1, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; event framTester.VerifyDone(client=0, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; event framTester.WriteDone(client=0) count == 0; delta(framDriver.ReadsCompleted) == 2; delta(framDriver.WritesCompleted) == 1.
+Pass rule: 
 Evidence:  Completions carry client=1 for the client-1 requests and client=0 for the client-0 read of the same data. ACCEPTED return before WriteDone; read-back equal on both clients (REQ-003/005 redundancy). Redundancy note: REQ-001/002/003/005 added for planted fault-disjoint redundancy (L2-3 has no planted faults; L2-1 and L2-5 share `verify_wrong_seed`): the client-1 write then read-back equality on both clients is a nominal write (REQ-002) and read (REQ-001), the ACCEPTED return precedes the completion (REQ-005), and read-back equality is the system-level evidence of the datasheet command sequence (REQ-003).
 Planted faults:none
 
@@ -97,7 +97,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-010, REQ-FramD
 Setup:     L2-1 passed.
 Procedure: MARK(60); bracket (2 samples); SWEEP(0x5005, 4096, 0x5005) (chunks chained from inside completions, §0); wait for SweepDone(VERIFY) (≤ 1200 s); bracket; MARK(61).
 Window:    Marker(id=60) … Marker(id=61)
-Pass rule: complete: STD. all_of: ABS; event framTester.SweepDone(kind=WRITE, chunks=4096, errors=0) count == 1; event framTester.SweepDone(kind=VERIFY, chunks=4096, errors=0) count == 1 (SWEEP rewrites the whole array; no later test may rely on content written before L2-5); event framTester.SweepDone(kind=WRITE) precedes event framTester.SweepDone(kind=VERIFY); delta(framDriver.WritesCompleted) == 4096; delta(framDriver.ReadsCompleted) == 4096; delta(framDriver.SpiErrors) == 0; delta(framDriver.RequestsRejected) == 0. metrics: delta(framTester.BytesVerified) == 262144; t(event framTester.SweepDone(kind=VERIFY)) - t(framTester.SWEEP sent) <= 1200 s (the ground sending precedes it by the uplink latency, < 1 s).
+Pass rule: metrics: delta(framTester.BytesVerified) == 262144; t(event framTester.SweepDone(kind=VERIFY)) - t(framTester.SWEEP sent) <= 1200 s (the ground sending precedes it by the uplink latency, < 1 s).
 Evidence:  Two SweepDone events with chunks=4096 errors=0; counters +4096/+4096.
 Planted faults:verify_wrong_seed, short_sweep
 
@@ -108,7 +108,7 @@ Covers:    REQ-FramDriver-023, REQ-FramDriver-012, REQ-FramDriver-015, REQ-FramD
 Setup:     L2-1 passed. GDS events listener attached before the reset.
 Procedure: MARK(70); bracket (2 samples); WRITE_PATTERN(0, 0x020000, 64, 0x7007); tlm.SEND_PKT(Health=1); bracket; MARK(71); wait until Marker(id=71) and its OpCodeCompleted are in the archive, then 1 s more (framer flushes at the 1 Hz tick); OpenOCD `reset run` (no power cycle: bench constraint); wait for last(framDriver.StartupState) == COMPLETE (≤ 10 s); MARK(72); bracket (2 samples); tlm.SEND_PKT(Health=1); READ_VERIFY(0, 0x020000, 64, 0x7007); bracket; MARK(73).
 Window:    W1 = Marker(id=70) … Marker(id=71); R = Marker(id=71) … Marker(id=72) (reset window); W2 = Marker(id=72) … Marker(id=73)
-Pass rule: complete: W1: STD; R: both markers present; boot-1 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot1 == last(framer.DroppedPackets) in W1 (no drop after W1 closed); boot-2 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot2 == 0 (boot-zero counter; a dropped startup event would count here); W2: STD. all_of: W1: ABS; event framTester.WriteDone(client=0, offset=0x020000, length=64, status=OK) count == 1; R: event framDriver.StartupComplete count == 1; event framDriver.DeviceIdMismatch count == 0; event framDriver.BlockProtectSet count == 0; event framDriver.StartupReadFailed count == 0; last(framDriver.StartupState) == COMPLETE; W2: ABS; event framTester.VerifyDone(client=0, offset=0x020000, length=64, status=OK, mismatches=0) count == 1; first(framDriver.WritesCompleted) == 0 (boot-zero counter → the MCU rebooted); last(rg8Hz.CycleCount) in W2 < last(rg8Hz.CycleCount) in W1 (Health packet id 1 polled by the two `tlm.SEND_PKT(Health)` commands in the procedure; UUT-independent reboot evidence).
+Pass rule: 
 Evidence:  WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) after it.
 Planted faults:corrupt_block
 Risk:      bench note — after an OpenOCD reset with the GDS attached, command dispatch has been seen to stall (uplink artifact); if reproduced in the dry run the harness restarts the GDS between MARK(71) and MARK(72); the run's `raw/` then holds two GDS log directories, the exporter merges them in `recv` order, `export-counts.json` reports both, and the restart time is recorded in §8.
@@ -120,7 +120,7 @@ Covers:    REQ-FramDriver-023
 Setup:     L3-1 passed (its reset and recovery done). GDS events listener attached before the reset.
 Procedure: MARK(74); bracket (2 samples); WRITE_PATTERN(0, 0x010000, 32, 0x3003); tlm.SEND_PKT(Health=1); bracket; MARK(75); wait until Marker(id=75) and its OpCodeCompleted are in the archive, then 1 s more (framer flushes at the 1 Hz tick); OpenOCD `reset run` (no power cycle: bench constraint); wait for last(framDriver.StartupState) == COMPLETE (≤ 10 s); MARK(76); bracket (2 samples); tlm.SEND_PKT(Health=1); READ_VERIFY(0, 0x010000, 32, 0x3003); bracket; MARK(77).
 Window:    W1 = Marker(id=74) … Marker(id=75); R = Marker(id=75) … Marker(id=76) (reset window); W2 = Marker(id=76) … Marker(id=77)
-Pass rule: complete: W1: STD; R: both markers present; boot-1 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot1 == last(framer.DroppedPackets) in W1 (no drop after W1 closed); boot-2 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot2 == 0 (boot-zero counter; a dropped startup event would count here); W2: STD. all_of: W1: ABS; event framTester.WriteDone(client=0, offset=0x010000, length=32, status=OK) count == 1; R: event framDriver.StartupComplete count == 1; event framDriver.DeviceIdMismatch count == 0; event framDriver.BlockProtectSet count == 0; event framDriver.StartupReadFailed count == 0; last(framDriver.StartupState) == COMPLETE; W2: ABS; event framTester.VerifyDone(client=0, offset=0x010000, length=32, status=OK, mismatches=0) count == 1; first(framDriver.WritesCompleted) == 0 (boot-zero counter → the MCU rebooted); last(rg8Hz.CycleCount) in W2 < last(rg8Hz.CycleCount) in W1 (Health packet id 1 polled by the two `tlm.SEND_PKT(Health)` commands in the procedure; UUT-independent reboot evidence).
+Pass rule: 
 Evidence:  WriteDone before the reset; WritesCompleted back to 0 then VerifyDone(mismatches=0) on the same block after it. Redundancy note (Captain's rule for REQ-023): L3-1 carries `corrupt_block`; L3-2 has no planted faults, writes and verifies its own block (0x010000, seed 0x3003) around its own reset, so no other test's content (L2-5's SWEEP rewrites the whole array) can disturb it. Region map note (iter-4): 0x010000 is also written by L2-3 (client 1, seed 0x3005 — distinct from L3-2's 0x3003 so neither write can be a no-op for the other); L7-1's final image (0x3FF00..) overlaps L2-2's block at 0x3FFC0, rewritten each run — no verdict ripple, both verify their own write.
 Planted faults:none
 Risk:      bench note — after an OpenOCD reset with the GDS attached, command dispatch has been seen to stall (uplink artifact); if reproduced in the dry run the harness restarts the GDS between MARK(71) and MARK(72); the run's `raw/` then holds two GDS log directories, the exporter merges them in `recv` order, `export-counts.json` reports both, and the restart time is recorded in §8.
@@ -132,7 +132,7 @@ Covers:    REQ-FramDriver-007, REQ-FramDriver-008
 Setup:     L2-1 passed.
 Procedure: MARK(80); bracket (2 samples); BURST(1, 0x030000, 64, 0x8008, BACK_TO_BACK); bracket; MARK(81).
 Window:    Marker(id=80) … Marker(id=81)
-Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1; event framDriver.RequestRejected(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1; event framTester.VerifyDone(client=1, offset=0x030000, length=64, status=OK) count == 1 (`mismatches` unconstrained: the block was never written with seed 0x8008); delta(framDriver.ReadsCompleted) == 1; delta(framDriver.RequestsRejected) == 1; delta(framDriver.WritesCompleted) == 0.
+Pass rule: 
 Evidence:  One BUSY return + one UUT BUSY event; exactly one completion (the first read).
 Planted faults:busy_skip
 
@@ -143,7 +143,7 @@ Covers:    REQ-FramDriver-007, REQ-FramDriver-008
 Setup:     L5-1 done.
 Procedure: MARK(82); bracket (2 samples); BURST(0, 0x031000, 64, 0x8118, BACK_TO_BACK); bracket; MARK(83).
 Window:    Marker(id=82) … Marker(id=83)
-Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=READ, client=0, offset=0x031000, length=64, status=BUSY) count == 1; event framDriver.RequestRejected(op=READ, client=0, offset=0x031000, length=64, status=BUSY) count == 1; event framTester.VerifyDone(client=0, offset=0x031000, length=64, status=OK) count == 1 (`mismatches` unconstrained: the block was never written with seed 0x8118 (as L5-1)); delta(framDriver.ReadsCompleted) == 1; delta(framDriver.RequestsRejected) == 1; delta(framDriver.WritesCompleted) == 0.
+Pass rule: 
 Evidence:  One BUSY return + one UUT BUSY event; exactly one completion (the first read). Redundancy note: Redundancy for REQ-007 (Captain's rule): L5-1 carries `busy_skip`; L5-4 has no planted faults. Same BURST shape on the other client index and an unwritten block.
 Planted faults:none
 
@@ -154,7 +154,7 @@ Covers:    REQ-FramDriver-006, REQ-FramDriver-008, REQ-FramDriver-016
 Setup:     L2-1 passed.
 Procedure: MARK(90); bracket (2 samples); REQUEST_RAW(READ, 0, 0x000100, 0); REQUEST_RAW(WRITE, 0, 0x000100, 65); bracket; MARK(91).
 Window:    Marker(id=90) … Marker(id=91)
-Pass rule: complete: STD. all_of: ABS; event framTester.RequestReturned(op=READ, client=0, offset=0x100, length=0, status=OUT_OF_RANGE) count == 1; event framTester.RequestReturned(op=WRITE, client=0, offset=0x100, length=65, status=OUT_OF_RANGE) count == 1; event framDriver.RequestRejected(status=OUT_OF_RANGE) count == 2; delta(framDriver.RequestsRejected) == 2; delta(framDriver.ReadsCompleted) == 0; delta(framDriver.WritesCompleted) == 0; event framTester.WriteDone count == 0; event framTester.VerifyDone count == 0.
+Pass rule: 
 Evidence:  Two OUT_OF_RANGE pairs, no RawDone; no completion; counters +2 rejected, +0 completed.
 Planted faults:none
 
@@ -165,7 +165,7 @@ Covers:    REQ-FramDriver-010
 Setup:     L2-1 passed.
 Procedure: MARK(100); bracket (2 samples); CHAIN(0, 0x034000, 64, 0xA00A); bracket; MARK(101).
 Window:    Marker(id=100) … Marker(id=101)
-Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(client=0, offset=0x034000, length=64, status=OK) count == 1; event framTester.VerifyDone(client=0, offset=0x034000, length=64, status=OK, mismatches=0) count == 1; event framDriver.RequestRejected count == 0; delta(framDriver.RequestsRejected) == 0; delta(framDriver.WritesCompleted) == 1; delta(framDriver.ReadsCompleted) == 1.
+Pass rule: 
 Evidence:  Write completion immediately followed by the chained read's completion, no BUSY.
 Planted faults:none
 
@@ -176,7 +176,7 @@ Covers:    — (checker validity)
 Setup:     L2-5 passed (block 0x035000 holds seed 0x5005 from the sweep; L6-1 rewrites it).
 Procedure: MARK(110); bracket (2 samples); WRITE_PATTERN(0, 0x035000, 64, 0xB00B); READ_VERIFY(0, 0x035000, 64, 0xB00C); bracket; MARK(111).
 Window:    Marker(id=110) … Marker(id=111)
-Pass rule: complete: STD. all_of: ABS; event framTester.VerifyDone(client=0, offset=0x035000, length=64, status=OK, mismatches=64) count == 1 (xorshift32 differs in every byte for adjacent seeds over 64 bytes — generator property, checked offline and recorded in the plan's decision log); delta(framDriver.ReadsCompleted) == 1.
+Pass rule: 
 Evidence:  VerifyDone with mismatches=64.
 Planted faults:none
 
@@ -187,7 +187,7 @@ Covers:    REQ-FramDriver-001, REQ-FramDriver-002, REQ-FramDriver-020
 Setup:     All other tests done.
 Procedure: MARK(120); bracket (2 samples); WRITE_PATTERN(0, 0x3FF00, 64, 0xF1F1); WRITE_PATTERN(0, 0x3FF40, 64, 0xF1F1); WRITE_PATTERN(0, 0x3FF80, 64, 0xF1F1); WRITE_PATTERN(0, 0x3FFC0, 64, 0xF1F1); DUMP(0x3FF00 + 8k, 8) for k = 0..31, DUMP(k+1) sent only after DumpData(offset=0x3FF00+8k) is in the archive (≥ 50 ms apart); bracket; MARK(121).
 Window:    Marker(id=120) … Marker(id=121)
-Pass rule: complete: STD. all_of: ABS; event framTester.WriteDone(status=OK) count == 4; event framTester.DumpData count == 32; for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k to +7) — computed by the auditor from the plan's normative pattern generator quoted on the page, not from any harness output; delta(framDriver.SpiErrors) == 0; delta(framDriver.RequestsRejected) == 0; event framDriver.RequestRejected count == 0.
+Pass rule: 
 Evidence:  32 DumpData events whose 256 bytes equal the auditor's regenerated image.
 Planted faults:final_wrong_image
 
@@ -252,7 +252,7 @@ Generated from `plan_helpers.py` planted fault declarations (`fth planted-faults
 14. 2026-10-30 builder (stage 2, Mode B round 1 → harness pass 2) — reviewer findings applied: predicate keys in both checkers are this plan's text verbatim; L2-5 time metric evaluated (clock defined above); verdict files carry `run`, `record_sha256`, `evidence`; run-start markers via reserved `MARK` ids (§1); exporter de-duplicates the recorder's repeated rows exactly (set per boot segment per recorder file), reads commands only from the sender's own log directory (`record/raw/cmd/`), reports raw archive line totals, names the FSW clock `fsw`, pairs each command with its dispatcher response; runner asserts exactly one GDS and one recorder and flashes the image (read-back verified, `record/raw/flash.log`) at run start; window START occurrence, END rows and the L3-1 reboot split defined as above; `framTester.CommandRejected` added to §0/ABS; archive layout = `<run>/record/raw/`. Known record artifact: the recorder stopped at the L3-1 ground-system restart may have logged its last 1 Hz packet partially (rows are written one channel at a time), so one boot-2 Fram packet in R can carry fewer than its full channel set; R's predicates use `last()` values only and are unaffected. Plan changes since the gate (#11 budget, #12 offsets, #14) are listed for the human with the delivery.
 15. 2026-10-30 builder (stage 2, Mode B round 2 → pass 2b) — run ids are neutral (`dry-1`…`dry-6`; the planted fault → directory mapping lives only in the orchestration script) after the builder's own grep found `dry-<planted fault>` ids in `runner/`, `verdicts.json` and, via `MARK(crc32(run id))`, invertibly in the record. Also applied: `precedes` tie-break by archive index only (builder checker), `delta` ≥ 2 samples wording (above), marker-collision note (§1), exporter lists torn packets (< 12 rows) in `export-counts.json`, runner stops the recorder right after a Fram packet completes before the L3-1 ground-system restart (takes effect in the next campaign; pass-2b records predate it). Flash step for stage 3 (manifest `.bin`, `dump_image` read-back + sha256 in `flash.log`) is owed before any run-for-record.
 16. 2026-10-30 human gate (Michael Starch) — plan changes #11–#15 acknowledged and approved as one diff; REQ-023 verification method stays Inspection; test build + harness to be opened as a draft PR on fprime-community/fprime-samd-reference (not for merge).
-17. 2026-11-02 runner (stage 3) — run `fram-r1` (manifest 6a91b929, drawn by the human) VOID at run start: `faults.py` rejected the draw's `sealed/faults.json` shape (`{"manifest_sha256", "faults": {test: planted fault}}`, written by `seal.py draw`) with a silent exit 2 — the dry runs had only ever fed it `{"planted faults": [...]}`; nothing was flashed or recorded and `sealed/` was never opened. Fix: `faults.py` reads `faults.values()` (legacy `planted faults` list kept for the orchestration script) and a malformed file fails loudly (stderr without planted fault names, exit 2). Proven by one unsealed smoke run with `{"faults": {}}` and a scratch local draw fed to the parser. Harness re-committed, manifest re-frozen (new sha8); the human re-draws into `fram-r2/`; `fram-r1/` is left in place, bound to the superseded manifest.
+17. 2026-11-02 runner (stage 3) — run `fram-r1` (manifest 6a91b929, drawn by the human) VOID at run start: `faults.py` rejected the draw's `sealed/faults.json` shape (`{"manifest_sha256", "faults": {test: knob}}`, written by `seal.py draw`) with a silent exit 2 — the dry runs had only ever fed it `{"knobs": [...]}`; nothing was flashed or recorded and `sealed/` was never opened. Fix: `faults.py` reads `faults.values()` (legacy `planted faults` list kept for the orchestration script) and a malformed file fails loudly (stderr without planted fault names, exit 2). Proven by one unsealed smoke run with `{"faults": {}}` and a scratch local draw fed to the parser. Harness re-committed, manifest re-frozen (new sha8); the human re-draws into `fram-r2/`; `fram-r1/` is left in place, bound to the superseded manifest.
 18. 2026-11-02 developer (DEV-2B port) — redundancy rule: every REQ with system-test coverage needs ≥ 2 covering tests whose planted fault sets are disjoint. Audit of the imported plan: REQ-003 and REQ-005 (L2-1 only; planted faults verify_wrong_seed, corrupt_block), REQ-007 (L5-1 only; planted fault busy_skip), REQ-023 (L3-1 only; planted fault corrupt_block) were single-covered.
 19. 2026-11-02 developer — REQ-003/005: extended L2-3 (planted fault-free) with `RequestReturned(op=WRITE, client=1, …, status=ACCEPTED) count == 1` and `… precedes WriteDone(client=1, …)`; L2-3 now covers REQ-003 and REQ-005. No new bench time.
 20. 2026-11-02 developer — REQ-007: new L5-4 = BURST(0, 0x031000, 64, 0x8118, BACK_TO_BACK) in MARK(82..83), planted fault-free, same pass rule shape as L5-1 (also covers REQ-008). ~3 s of bench time.

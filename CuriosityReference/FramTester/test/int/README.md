@@ -1,8 +1,8 @@
 # FramTester system test — the QUAL-FRAM plan and its stimulus
 
 This directory is the **single source of truth** for the FRAM qualification system test. By the
-Captain's layout rule (test-process skills, "Layout"): the plan, the planted faults and helper
-predicates, the stimulus tests and the independent checker live in the deployment branch that
+Captain's layout rule (test-process skills, "Layout"): the plan, the planted faults, the
+integration tests (stimulus + named checks) and the independent checker live in the deployment branch that
 hosts the test-helper component (`CuriosityReference/FramTester`), beside it; the UUT repo
 (`fprime-community/fprime-devices`, `Fram.FramDriver`) holds the component, its unit tests and
 its SDD; the tooling repo [`LeStarch/fprime-testing-harness`](https://github.com/LeStarch/fprime-testing-harness)
@@ -11,11 +11,11 @@ as regression vectors, each with a labelled copy of this plan under `vectors/pla
 
 | what | file (here) |
 |---|---|
-| plan: tests, windows, procedures, pass rules as predicate data, requirements, decision log | `plan.json` (`plan.md` is rendered from it: `fth render-plan plan.json`, never hand-edited) |
-| registered helper predicates and planted faults (`@helper`, `@planted_fault`) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
+| plan: tests, windows, procedures, metrics, requirements, planted-fault menu source, decision log — **no pass rules**: the named checks live in the test functions (phase 1) | `plan.json` (`plan.md` is rendered from it: `fth render-plan plan.json`, never hand-edited) |
+| planted-fault bodies (`@planted_fault`; their `fails` lists name checks verbatim) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
 | generated fault menu | `faults-menu.json` (`fth planted-faults-menu plan.json`, never hand-edited) |
 | bench command lines (OpenOCD, GDS, recorder, sender) | `bench.json` |
-| pytest stimulus, one test per plan id | `test_fram_plan.py` |
+| integration tests, one per plan id: stimulus inside `with window(...)`, named checks `check("<name>")`, infrastructure preconditions `require(...)`, `@pytest.mark.req(...)`; the former helper predicates are check functions here | `test_fram_plan.py` |
 | the adversary's independent checker (written from the plan text alone) | `independent_fram_checks.py` — `fth audit --independent` |
 | plan import provenance (the approved `plan.md` the JSON was ported from) | `import/` |
 | regression verdicts this branch was ported against | `vectors/fram-r2.json` (copy of the tooling repo's `vectors/fram-r2/expected-verdicts.json`) |
@@ -23,7 +23,7 @@ as regression vectors, each with a labelled copy of this plan under `vectors/pla
 Run (from a checkout of this branch, `fth` installed at the manifest's pin):
 
 ```
-fth verify-plan CuriosityReference/FramTester/test/int/plan.json
+fth verify-plan CuriosityReference/FramTester/test/int/plan.json --tests CuriosityReference/FramTester/test/int/test_fram_plan.py   # dry-runs the tests: every planted-fault `fails` predicate must be a check they declare
 fth run --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
        --bench CuriosityReference/FramTester/test/int/bench.json --tests CuriosityReference/FramTester/test/int
 fth audit --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/FramTester/test/int/plan.json \
@@ -35,11 +35,18 @@ fth audit --run-dir <run> --manifest <manifest.json> --plan CuriosityReference/F
 ## Stimulus only
 
 Each `test_<ID>` sends exactly the commands the plan's procedure lists for test `<ID>`, in plan
-order, between the plan's start/end markers. There is **no assertion** on any result in this file;
-the only waits are pacing (the plan's `bracket (2 samples)` = two 1 Hz Fram packets, and
-"wait for *event*" steps) so a command is not sent while the device is still busy with the last one.
-Verdicts come from replaying the record against the plan (`fth evaluate` / `fth audit`), where every
-pass rule is data and the auditor can re-run it without the bench.
+order, inside `with window(start, end):` (the plan's start/end markers), and declares there the
+**named checks** that judge the window — `check("<name>")` in the plan grammar (`event X(args) count == n`,
+`A precedes B`, `delta(channel) == n`, `last(channel) == v`, …) or `check("<name>", fn)` for a check function
+(the former `plan_helpers.py` helper predicates: boot-segment comparisons, the xorshift32 dump image).
+When the window closes every check is judged over the record and all failures are raised together (no
+fail-fast). `require(...)` names infrastructure preconditions (`STD`: markers, every command dispatched,
+no dispatcher errors, no dropped packets, two bracket samples): not holding → `Incomplete` → UNVERIFIED.
+An expected UUT event that is absent is a FAIL, never UNVERIFIED. The only waits are pacing (the plan's
+`bracket (2 samples)` = two 1 Hz Fram packets, and "wait for *event*" steps) so a command is not sent while
+the device is still busy with the last one. Verdicts are pytest's (`fth run` reads its junit: pass → PASS,
+failed check → FAIL, Incomplete → UNVERIFIED); the auditor re-executes the same test functions over the
+sealed record (`fth.replay`, phase 2).
 
 Planted faults are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
 drawn test **only**; the test bodies do not know whether a planted fault is active.

@@ -1,84 +1,12 @@
-"""Pilot plan helpers for QUAL-FRAM: helper predicates and planted faults.
+"""Planted faults for QUAL-FRAM (the former helper predicates now live in ``test_fram_plan.py`` as
+check functions beside the checks that use them).
 
-Loaded by ``fth`` through ``plan.json: helpers_module``. Helpers receive a
-``HelperContext`` (``ctx.window``, ``ctx.windows``, ``ctx.segment(name, boot)``) and return
-``(holds, seen_text)`` or ``(holds, seen_text, refs, unverified)``. Planted faults receive
+Loaded by ``fth`` through ``plan.json: helpers_module``. Planted faults receive
 ``(test_id, command_name, args)`` and return rewritten ``args`` or a list of
 ``(command_name, args)`` to send instead. ``fails`` lists come from the sealed fault menu
 (``aux/manifest-d994623e.json``) and are per test.
 """
-from fth.registry import helper, planted_fault
-
-
-def xorshift32_byte(seed, offset, i):
-    """Normative pattern byte i of (seed, offset): one xorshift32 iteration of seed ^ (offset+i)."""
-    v = (seed ^ ((offset + i) & 0xFFFFFFFF)) & 0xFFFFFFFF
-    v ^= (v << 13) & 0xFFFFFFFF
-    v ^= v >> 17
-    v ^= (v << 5) & 0xFFFFFFFF
-    return v & 0xFF
-
-
-def _last(window, channel):
-    rows = window.channel(channel)
-    return rows[-1] if rows else None
-
-
-@helper("last_in_boot_equals_last_in_window")
-def last_in_boot_equals_last_in_window(ctx, channel, window, boot, other):
-    seg = ctx.segment(window, boot)
-    a, b = _last(seg, channel), _last(ctx.windows[other], channel)
-    if a is None or b is None:
-        return False, f"no sample of {channel} in {seg.label if a is None else other}", [], True
-    return a.value == b.value, f"{window}-boot{boot + 1} last={a.value} ({a.line}); {other} last={b.value} ({b.line})", [
-        f"channels.jsonl:{a.idx}-{a.idx}", f"channels.jsonl:{b.idx}-{b.idx}"]
-
-
-@helper("last_in_boot_equals")
-def last_in_boot_equals(ctx, channel, window, boot, value):
-    seg = ctx.segment(window, boot)
-    a = _last(seg, channel)
-    if a is None:
-        return False, f"no sample of {channel} in {seg.label}", [], True
-    return a.value == value, f"{window}-boot{boot + 1} last={a.value} ({a.line})", [f"channels.jsonl:{a.idx}-{a.idx}"]
-
-
-@helper("last_less_than_other_window")
-def last_less_than_other_window(ctx, channel, other):
-    a, b = _last(ctx.window, channel), _last(ctx.windows[other], channel)
-    if a is None or b is None:
-        return False, f"no sample of {channel} in {ctx.window.label if a is None else other}", [], True
-    return a.value < b.value, f"{ctx.window.label} last={a.value} ({a.line}) vs {other} last={b.value} ({b.line})", [
-        f"channels.jsonl:{a.idx}-{a.idx}", f"channels.jsonl:{b.idx}-{b.idx}"]
-
-
-@helper("dump_image_matches_xorshift32")
-def dump_image_matches_xorshift32(ctx, seed, base, chunk, count):
-    """Every DumpData(offset=base+chunk*k) carries the auditor-regenerated pattern bytes."""
-    rows = ctx.window.events("framTester.DumpData")
-    bad, seen = [], {}
-    for e in rows:
-        if e.args.get("offset") in seen:
-            return False, f"duplicate DumpData row for offset {e.args.get('offset')} (L{e.line})", [], False
-        seen[e.args.get("offset")] = e
-    missing = [base + chunk * k for k in range(count) if (base + chunk * k) not in seen]
-    for k in range(count):
-        off = base + chunk * k
-        e = seen.get(off)
-        if e is None:
-            continue
-        got = b"".join(int(e.raw_args[w], 16).to_bytes(4, "big") for w in ("data0", "data1"))
-        want = bytes(xorshift32_byte(seed, off, i) for i in range(chunk))
-        if got != want:
-            bad.append(f"{e.line} offset 0x{off:X}: got {got.hex()} want {want.hex()}")
-    holds = not bad and not missing
-    text = f"{count - len(missing)}/{count} dumps compared, {len(bad)} differ"
-    if missing:
-        text += "; missing offsets " + ", ".join(f"0x{m:X}" for m in missing[:4])
-    if bad:
-        text += "; " + "; ".join(bad[:3])
-    refs = [f"events.jsonl:{rows[0].idx}-{rows[-1].idx}"] if rows else []
-    return holds, text, refs
+from fth.registry import planted_fault
 
 
 # ---- planted faults (menu is generated from these: ``fth planted-faults-menu plan.json``) ----

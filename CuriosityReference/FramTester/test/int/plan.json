@@ -302,7 +302,7 @@
     "14. 2026-10-30 builder (stage 2, Mode B round 1 → harness pass 2) — reviewer findings applied: predicate keys in both checkers are this plan's text verbatim; L2-5 time metric evaluated (clock defined above); verdict files carry `run`, `record_sha256`, `evidence`; run-start markers via reserved `MARK` ids (§1); exporter de-duplicates the recorder's repeated rows exactly (set per boot segment per recorder file), reads commands only from the sender's own log directory (`record/raw/cmd/`), reports raw archive line totals, names the FSW clock `fsw`, pairs each command with its dispatcher response; runner asserts exactly one GDS and one recorder and flashes the image (read-back verified, `record/raw/flash.log`) at run start; window START occurrence, END rows and the L3-1 reboot split defined as above; `framTester.CommandRejected` added to §0/ABS; archive layout = `<run>/record/raw/`. Known record artifact: the recorder stopped at the L3-1 ground-system restart may have logged its last 1 Hz packet partially (rows are written one channel at a time), so one boot-2 Fram packet in R can carry fewer than its full channel set; R's predicates use `last()` values only and are unaffected. Plan changes since the gate (#11 budget, #12 offsets, #14) are listed for the human with the delivery.",
     "15. 2026-10-30 builder (stage 2, Mode B round 2 → pass 2b) — run ids are neutral (`dry-1`…`dry-6`; the planted fault → directory mapping lives only in the orchestration script) after the builder's own grep found `dry-<planted fault>` ids in `runner/`, `verdicts.json` and, via `MARK(crc32(run id))`, invertibly in the record. Also applied: `precedes` tie-break by archive index only (builder checker), `delta` ≥ 2 samples wording (above), marker-collision note (§1), exporter lists torn packets (< 12 rows) in `export-counts.json`, runner stops the recorder right after a Fram packet completes before the L3-1 ground-system restart (takes effect in the next campaign; pass-2b records predate it). Flash step for stage 3 (manifest `.bin`, `dump_image` read-back + sha256 in `flash.log`) is owed before any run-for-record.",
     "16. 2026-10-30 human gate (Michael Starch) — plan changes #11–#15 acknowledged and approved as one diff; REQ-023 verification method stays Inspection; test build + harness to be opened as a draft PR on fprime-community/fprime-samd-reference (not for merge).",
-    "17. 2026-11-02 runner (stage 3) — run `fram-r1` (manifest 6a91b929, drawn by the human) VOID at run start: `faults.py` rejected the draw's `sealed/faults.json` shape (`{\"manifest_sha256\", \"faults\": {test: planted fault}}`, written by `seal.py draw`) with a silent exit 2 — the dry runs had only ever fed it `{\"planted faults\": [...]}`; nothing was flashed or recorded and `sealed/` was never opened. Fix: `faults.py` reads `faults.values()` (legacy `planted faults` list kept for the orchestration script) and a malformed file fails loudly (stderr without planted fault names, exit 2). Proven by one unsealed smoke run with `{\"faults\": {}}` and a scratch local draw fed to the parser. Harness re-committed, manifest re-frozen (new sha8); the human re-draws into `fram-r2/`; `fram-r1/` is left in place, bound to the superseded manifest.",
+    "17. 2026-11-02 runner (stage 3) — run `fram-r1` (manifest 6a91b929, drawn by the human) VOID at run start: `faults.py` rejected the draw's `sealed/faults.json` shape (`{\"manifest_sha256\", \"faults\": {test: knob}}`, written by `seal.py draw`) with a silent exit 2 — the dry runs had only ever fed it `{\"knobs\": [...]}`; nothing was flashed or recorded and `sealed/` was never opened. Fix: `faults.py` reads `faults.values()` (legacy `planted faults` list kept for the orchestration script) and a malformed file fails loudly (stderr without planted fault names, exit 2). Proven by one unsealed smoke run with `{\"faults\": {}}` and a scratch local draw fed to the parser. Harness re-committed, manifest re-frozen (new sha8); the human re-draws into `fram-r2/`; `fram-r1/` is left in place, bound to the superseded manifest.",
     "18. 2026-11-02 developer (DEV-2B port) — redundancy rule: every REQ with system-test coverage needs ≥ 2 covering tests whose planted fault sets are disjoint. Audit of the imported plan: REQ-003 and REQ-005 (L2-1 only; planted faults verify_wrong_seed, corrupt_block), REQ-007 (L5-1 only; planted fault busy_skip), REQ-023 (L3-1 only; planted fault corrupt_block) were single-covered.",
     "19. 2026-11-02 developer — REQ-003/005: extended L2-3 (planted fault-free) with `RequestReturned(op=WRITE, client=1, …, status=ACCEPTED) count == 1` and `… precedes WriteDone(client=1, …)`; L2-3 now covers REQ-003 and REQ-005. No new bench time.",
     "20. 2026-11-02 developer — REQ-007: new L5-4 = BURST(0, 0x031000, 64, 0x8118, BACK_TO_BACK) in MARK(82..83), planted fault-free, same pass rule shape as L5-1 (also covers REQ-008). ~3 s of bench time.",
@@ -337,16 +337,6 @@
           "end_id": 11,
           "reset": false
         }
-      ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "last(framDriver.StartupState) == COMPLETE",
-        "last(framDriver.DeviceIdMatch) == true",
-        "last(framDriver.StatusRegister) & 0x0C == 0",
-        "last(framDriver.StatusRegister) & 0xBD == 0x00"
       ],
       "metrics": [],
       "rationale": [
@@ -384,15 +374,6 @@
           "reset": false
         }
       ],
-      "complete": [
-        "STD",
-        "commands_sent == 3"
-      ],
-      "all_of": [
-        "event framTester.Marker(id=0xA5A5) count == 1",
-        "event framTester.Marker(id=20) precedes event framTester.Marker(id=0xA5A5)",
-        "event framTester.Marker(id=0xA5A5) precedes event framTester.Marker(id=21)"
-      ],
       "metrics": [],
       "rationale": [],
       "knobs": [],
@@ -428,23 +409,6 @@
           "end_id": 31,
           "reset": false
         }
-      ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.RequestReturned(op=WRITE, client=0, offset=0, length=64, status=ACCEPTED) count == 1",
-        "event framTester.RequestReturned(op=WRITE, client=0, offset=0, length=64, status=ACCEPTED) precedes event framTester.WriteDone(client=0, offset=0, length=64, status=OK)",
-        "event framTester.WriteDone(client=0, offset=0, length=64, status=OK) count == 1",
-        "event framTester.VerifyDone(client=0, offset=0, length=64, status=OK, mismatches=0) count == 1",
-        "event framTester.WriteDone(client=0, offset=0, length=64) precedes event framTester.VerifyDone(client=0, offset=0, length=64)",
-        "delta(framDriver.WritesCompleted) == 1",
-        "delta(framDriver.ReadsCompleted) == 1",
-        "delta(framDriver.RequestsRejected) == 0",
-        "delta(framDriver.SpiErrors) == 0",
-        "event framDriver.RequestRejected count == 0",
-        "event framDriver.SpiError count == 0"
       ],
       "metrics": [],
       "rationale": [],
@@ -484,20 +448,6 @@
           "reset": false
         }
       ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.WriteDone(client=0, offset=0x3FFC0, length=64, status=OK) count == 1",
-        "event framTester.VerifyDone(client=0, offset=0x3FFC0, length=64, status=OK, mismatches=0) count == 1",
-        "event framTester.RequestReturned(op=READ, client=0, offset=0x3FFC1, length=64, status=OUT_OF_RANGE) count == 1",
-        "event framDriver.RequestRejected(op=READ, client=0, offset=0x3FFC1, length=64, status=OUT_OF_RANGE) count == 1",
-        "delta(framDriver.ReadsCompleted) == 1",
-        "delta(framDriver.WritesCompleted) == 1",
-        "delta(framDriver.RequestsRejected) == 1",
-        "event framTester.VerifyDone count == 1"
-      ],
       "metrics": [],
       "rationale": [],
       "knobs": [
@@ -536,20 +486,6 @@
           "reset": false
         }
       ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.RequestReturned(op=WRITE, client=1, offset=0x010000, length=32, status=ACCEPTED) count == 1",
-        "event framTester.RequestReturned(op=WRITE, client=1, offset=0x010000, length=32, status=ACCEPTED) precedes event framTester.WriteDone(client=1, offset=0x010000, length=32, status=OK)",
-        "event framTester.WriteDone(client=1, offset=0x010000, length=32, status=OK) count == 1",
-        "event framTester.VerifyDone(client=1, offset=0x010000, length=32, status=OK, mismatches=0) count == 1",
-        "event framTester.VerifyDone(client=0, offset=0x010000, length=32, status=OK, mismatches=0) count == 1",
-        "event framTester.WriteDone(client=0) count == 0",
-        "delta(framDriver.ReadsCompleted) == 2",
-        "delta(framDriver.WritesCompleted) == 1"
-      ],
       "metrics": [],
       "rationale": [
         {
@@ -587,19 +523,6 @@
           "end_id": 61,
           "reset": false
         }
-      ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.SweepDone(kind=WRITE, chunks=4096, errors=0) count == 1",
-        "event framTester.SweepDone(kind=VERIFY, chunks=4096, errors=0) count == 1",
-        "event framTester.SweepDone(kind=WRITE) precedes event framTester.SweepDone(kind=VERIFY)",
-        "delta(framDriver.WritesCompleted) == 4096",
-        "delta(framDriver.ReadsCompleted) == 4096",
-        "delta(framDriver.SpiErrors) == 0",
-        "delta(framDriver.RequestsRejected) == 0"
       ],
       "metrics": [
         "delta(framTester.BytesVerified) == 262144",
@@ -671,63 +594,6 @@
           "reset": false
         }
       ],
-      "complete": {
-        "W1": [
-          "STD"
-        ],
-        "W2": [
-          "STD"
-        ],
-        "R": [
-          "both markers present",
-          {
-            "helper": "last_in_boot_equals_last_in_window",
-            "text": "boot-1 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot1 == last(framer.DroppedPackets) in W1",
-            "args": {
-              "channel": "framer.DroppedPackets",
-              "window": "R",
-              "boot": 0,
-              "other": "W1"
-            }
-          },
-          {
-            "helper": "last_in_boot_equals",
-            "text": "boot-2 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot2 == 0",
-            "args": {
-              "channel": "framer.DroppedPackets",
-              "window": "R",
-              "boot": 1,
-              "value": 0
-            }
-          }
-        ]
-      },
-      "all_of": {
-        "W1": [
-          "ABS",
-          "event framTester.WriteDone(client=0, offset=0x020000, length=64, status=OK) count == 1"
-        ],
-        "R": [
-          "event framDriver.StartupComplete count == 1",
-          "event framDriver.DeviceIdMismatch count == 0",
-          "event framDriver.BlockProtectSet count == 0",
-          "event framDriver.StartupReadFailed count == 0",
-          "last(framDriver.StartupState) == COMPLETE"
-        ],
-        "W2": [
-          "ABS",
-          "event framTester.VerifyDone(client=0, offset=0x020000, length=64, status=OK, mismatches=0) count == 1",
-          "first(framDriver.WritesCompleted) == 0",
-          {
-            "helper": "last_less_than_other_window",
-            "text": "last(rg8Hz.CycleCount) in W2 < last(rg8Hz.CycleCount) in W1",
-            "args": {
-              "channel": "rg8Hz.CycleCount",
-              "other": "W1"
-            }
-          }
-        ]
-      },
       "metrics": [],
       "rationale": [
         {
@@ -799,63 +665,6 @@
           "reset": false
         }
       ],
-      "complete": {
-        "W1": [
-          "STD"
-        ],
-        "W2": [
-          "STD"
-        ],
-        "R": [
-          "both markers present",
-          {
-            "helper": "last_in_boot_equals_last_in_window",
-            "text": "boot-1 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot1 == last(framer.DroppedPackets) in W1",
-            "args": {
-              "channel": "framer.DroppedPackets",
-              "window": "R",
-              "boot": 0,
-              "other": "W1"
-            }
-          },
-          {
-            "helper": "last_in_boot_equals",
-            "text": "boot-2 segment (≥ 1 sample): last(framer.DroppedPackets) in R-boot2 == 0",
-            "args": {
-              "channel": "framer.DroppedPackets",
-              "window": "R",
-              "boot": 1,
-              "value": 0
-            }
-          }
-        ]
-      },
-      "all_of": {
-        "W1": [
-          "ABS",
-          "event framTester.WriteDone(client=0, offset=0x010000, length=32, status=OK) count == 1"
-        ],
-        "R": [
-          "event framDriver.StartupComplete count == 1",
-          "event framDriver.DeviceIdMismatch count == 0",
-          "event framDriver.BlockProtectSet count == 0",
-          "event framDriver.StartupReadFailed count == 0",
-          "last(framDriver.StartupState) == COMPLETE"
-        ],
-        "W2": [
-          "ABS",
-          "event framTester.VerifyDone(client=0, offset=0x010000, length=32, status=OK, mismatches=0) count == 1",
-          "first(framDriver.WritesCompleted) == 0",
-          {
-            "helper": "last_less_than_other_window",
-            "text": "last(rg8Hz.CycleCount) in W2 < last(rg8Hz.CycleCount) in W1",
-            "args": {
-              "channel": "rg8Hz.CycleCount",
-              "other": "W1"
-            }
-          }
-        ]
-      },
       "metrics": [],
       "rationale": [
         {
@@ -904,18 +713,6 @@
           "reset": false
         }
       ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.RequestReturned(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1",
-        "event framDriver.RequestRejected(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1",
-        "event framTester.VerifyDone(client=1, offset=0x030000, length=64, status=OK) count == 1",
-        "delta(framDriver.ReadsCompleted) == 1",
-        "delta(framDriver.RequestsRejected) == 1",
-        "delta(framDriver.WritesCompleted) == 0"
-      ],
       "metrics": [],
       "rationale": [
         {
@@ -952,18 +749,6 @@
           "end_id": 83,
           "reset": false
         }
-      ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.RequestReturned(op=READ, client=0, offset=0x031000, length=64, status=BUSY) count == 1",
-        "event framDriver.RequestRejected(op=READ, client=0, offset=0x031000, length=64, status=BUSY) count == 1",
-        "event framTester.VerifyDone(client=0, offset=0x031000, length=64, status=OK) count == 1",
-        "delta(framDriver.ReadsCompleted) == 1",
-        "delta(framDriver.RequestsRejected) == 1",
-        "delta(framDriver.WritesCompleted) == 0"
       ],
       "metrics": [],
       "rationale": [
@@ -1002,20 +787,6 @@
           "reset": false
         }
       ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.RequestReturned(op=READ, client=0, offset=0x100, length=0, status=OUT_OF_RANGE) count == 1",
-        "event framTester.RequestReturned(op=WRITE, client=0, offset=0x100, length=65, status=OUT_OF_RANGE) count == 1",
-        "event framDriver.RequestRejected(status=OUT_OF_RANGE) count == 2",
-        "delta(framDriver.RequestsRejected) == 2",
-        "delta(framDriver.ReadsCompleted) == 0",
-        "delta(framDriver.WritesCompleted) == 0",
-        "event framTester.WriteDone count == 0",
-        "event framTester.VerifyDone count == 0"
-      ],
       "metrics": [],
       "rationale": [],
       "knobs": [],
@@ -1045,18 +816,6 @@
           "reset": false
         }
       ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.WriteDone(client=0, offset=0x034000, length=64, status=OK) count == 1",
-        "event framTester.VerifyDone(client=0, offset=0x034000, length=64, status=OK, mismatches=0) count == 1",
-        "event framDriver.RequestRejected count == 0",
-        "delta(framDriver.RequestsRejected) == 0",
-        "delta(framDriver.WritesCompleted) == 1",
-        "delta(framDriver.ReadsCompleted) == 1"
-      ],
       "metrics": [],
       "rationale": [],
       "knobs": [],
@@ -1084,14 +843,6 @@
           "end_id": 111,
           "reset": false
         }
-      ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.VerifyDone(client=0, offset=0x035000, length=64, status=OK, mismatches=64) count == 1",
-        "delta(framDriver.ReadsCompleted) == 1"
       ],
       "metrics": [],
       "rationale": [
@@ -1132,27 +883,6 @@
           "end_id": 121,
           "reset": false
         }
-      ],
-      "complete": [
-        "STD"
-      ],
-      "all_of": [
-        "ABS",
-        "event framTester.WriteDone(status=OK) count == 4",
-        "event framTester.DumpData count == 32",
-        {
-          "helper": "dump_image_matches_xorshift32",
-          "text": "for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k to +7) — computed by the auditor from the plan's normative pattern generator quoted on the page, not from any harness output",
-          "args": {
-            "seed": 61937,
-            "base": 261888,
-            "chunk": 8,
-            "count": 32
-          }
-        },
-        "delta(framDriver.SpiErrors) == 0",
-        "delta(framDriver.RequestsRejected) == 0",
-        "event framDriver.RequestRejected count == 0"
       ],
       "metrics": [],
       "rationale": [],
