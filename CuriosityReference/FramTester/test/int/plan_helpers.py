@@ -1,13 +1,13 @@
-"""Pilot plan helpers for QUAL-FRAM: helper predicates and fault knobs.
+"""Pilot plan helpers for QUAL-FRAM: helper predicates and fault planted_faults.
 
 Loaded by ``fth`` through ``plan.json: helpers_module``. Helpers receive a
 ``HelperContext`` (``ctx.window``, ``ctx.windows``, ``ctx.segment(name, boot)``) and return
-``(holds, seen_text)`` or ``(holds, seen_text, refs, unverified)``. Knobs receive
+``(holds, seen_text)`` or ``(holds, seen_text, refs, unverified)``. PlantedFaults receive
 ``(test_id, command_name, args)`` and return rewritten ``args`` or a list of
 ``(command_name, args)`` to send instead. ``fails`` lists come from the sealed fault menu
 (``aux/manifest-d994623e.json``) and are per test.
 """
-from fth.registry import helper, knob
+from fth.registry import helper, planted_fault
 
 
 def xorshift32_byte(seed, offset, i):
@@ -81,18 +81,18 @@ def dump_image_matches_xorshift32(ctx, seed, base, chunk, count):
     return holds, text, refs
 
 
-# ---- fault knobs (menu is generated from these: ``fth knobs-menu plan.json``) ----
+# ---- fault planted_faults (menu is generated from these: ``fth planted-faults-menu plan.json``) ----
 
 # ---------------------------------------------------------------------------------------
-# Fault knobs. ``command_name`` is the spelling the stimulus passes to ``send()`` (the
-# ``framTester.X`` short form; the deployment prefix is added later by the sender). Each knob
+# Fault planted_faults. ``command_name`` is the spelling the stimulus passes to ``send()`` (the
+# ``framTester.X`` short form; the deployment prefix is added later by the sender). Each planted_fault
 # rewrites only the named command of the named test and returns ``args`` untouched otherwise.
 # ---------------------------------------------------------------------------------------
 def _is(command_name, short):
     return command_name == short or command_name.endswith("." + short)
 
 
-@knob("verify_wrong_seed", applies_to=["L2-1", "L2-5"], cls="harness-expectation",
+@planted_fault("verify_wrong_seed", applies_to=["L2-1", "L2-5"], cls="harness-expectation",
       mechanism="harness verifies (READ_VERIFY / SWEEP verify pass) against seed+1 while the device holds the planned seed; BytesVerified counts bytes compared, so its delta predicates still hold",
       fails={
         "L2-1": [
@@ -110,7 +110,7 @@ def verify_wrong_seed(test_id, command_name, args):
     return args
 
 
-@knob("corrupt_block", applies_to=["L2-1", "L2-2", "L3-1"], cls="uut-state",
+@planted_fault("corrupt_block", applies_to=["L2-1", "L2-2", "L3-1"], cls="uut-state",
       mechanism="harness overwrites the test's 64-byte block with seed+7 (WRITE_PATTERN from client 1) between the planned write and the verify — inside the window for L2-1/L2-2 (hence the WritesCompleted delta also fails); for L3-1 issued right after MARK(71), before the reset, i.e. in window R (outside W1/W2; no ripple to L7-1, whose region 0x3FF00.. is rewritten by L7-1 itself)",
       fails={
         "L2-1": [
@@ -130,13 +130,13 @@ def corrupt_block(test_id, command_name, args):
         client, offset, length, seed = args
         return [(command_name, args), (command_name, [1, offset, length, (seed + 7) & 0xFFFFFFFF])]
     if test_id == "L3-1" and _is(command_name, "framTester.WRITE_PATTERN"):
-        # inside W1, before the reset (the marker command is never handed to a knob — iter-4 ADV-E #1)
+        # inside W1, before the reset (the marker command is never handed to a planted_fault — iter-4 ADV-E #1)
         client, offset, length, seed = args
         return [(command_name, args), (command_name, [1, offset, length, (seed + 7) & 0xFFFFFFFF])]
     return args
 
 
-@knob("final_wrong_image", applies_to=["L7-1"], cls="uut-state",
+@planted_fault("final_wrong_image", applies_to=["L7-1"], cls="uut-state",
       mechanism="harness writes the final region with seed 0xF1F2 while the plan's dump expectation stays 0xF1F1 (device content disturbed; final-state row expected FAIL)",
       fails=[
         "for every k: event framTester.DumpData(offset=0x3FF00+8k, length=8, data0, data1) bytes == xorshift32 pattern(seed 0xF1F1, offset 0x3FF00+8k to +7) — computed by the auditor from the plan's normative pattern generator quoted on the page, not from any harness output"
@@ -147,7 +147,7 @@ def final_wrong_image(test_id, command_name, args):
     return args
 
 
-@knob("short_sweep", applies_to=["L2-5"], cls="stimulus",
+@planted_fault("short_sweep", applies_to=["L2-5"], cls="stimulus",
       mechanism="harness configures SWEEP over 4095 chunks and still expects the full device",
       fails=[
         "event framTester.SweepDone(kind=WRITE, chunks=4096, errors=0) count == 1",
@@ -162,7 +162,7 @@ def short_sweep(test_id, command_name, args):
     return args
 
 
-@knob("busy_skip", applies_to=["L5-1"], cls="stimulus",
+@planted_fault("busy_skip", applies_to=["L5-1"], cls="stimulus",
       mechanism="harness BURST mode SEQUENTIAL issues the second read from inside the first read's completion instead of back-to-back (FPP enum FramTester.BurstMode: BACK_TO_BACK | SEQUENTIAL)",
       fails=[
         "event framTester.RequestReturned(op=READ, client=1, offset=0x030000, length=64, status=BUSY) count == 1",

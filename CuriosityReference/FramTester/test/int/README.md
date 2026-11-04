@@ -1,7 +1,7 @@
 # FramTester system test — the QUAL-FRAM plan and its stimulus
 
 This directory is the **single source of truth** for the FRAM qualification system test. By the
-Captain's layout rule (test-process skills, "Layout"): the plan, the fault knobs and helper
+Captain's layout rule (test-process skills, "Layout"): the plan, the fault planted faults and helper
 predicates, the stimulus tests and the independent checker live in the deployment branch that
 hosts the test-helper component (`CuriosityReference/FramTester`), beside it; the UUT repo
 (`fprime-community/fprime-devices`, `Fram.FramDriver`) holds the component, its unit tests and
@@ -12,8 +12,8 @@ as regression vectors, each with a labelled copy of this plan under `vectors/pla
 | what | file (here) |
 |---|---|
 | plan: tests, windows, procedures, pass rules as predicate data, requirements, decision log | `plan.json` (`plan.md` is rendered from it: `fth render-plan plan.json`, never hand-edited) |
-| registered helper predicates and fault knobs (`@helper`, `@knob`) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
-| generated fault menu | `faults-menu.json` (`fth knobs-menu plan.json`, never hand-edited) |
+| registered helper predicates and fault planted faults (`@helper`, `@planted_fault`) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
+| generated fault menu | `faults-menu.json` (`fth planted-faults-menu plan.json`, never hand-edited) |
 | bench command lines (OpenOCD, GDS, recorder, sender) | `bench.json` |
 | pytest stimulus, one test per plan id | `test_fram_plan.py` |
 | the adversary's independent checker (written from the plan text alone) | `independent_fram_checks.py` — `fth audit --independent` |
@@ -41,8 +41,8 @@ the only waits are pacing (the plan's `bracket (2 samples)` = two 1 Hz Fram pack
 Verdicts come from replaying the record against the plan (`fth evaluate` / `fth audit`), where every
 pass rule is data and the auditor can re-run it without the bench.
 
-Fault knobs are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
-drawn test **only**; the test bodies do not know whether a knob is active.
+Fault planted faults are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
+drawn test **only**; the test bodies do not know whether a planted fault is active.
 
 ## Running
 
@@ -51,7 +51,7 @@ Live (bench host, campaign root containing `uut/` and the run directories):
 ```bash
 pip install -e <fprime-testing-harness>            # provides `fth` and the pytest plugin
 fth manifest ...                                   # repos, image, bench.json, toolchain -> manifest.json
-fth draw --manifest manifest.json --seed-file seed.txt --run-dir rfr/<run-id>   # sealed/faults.json (knob names stay sealed)
+fth draw --manifest manifest.json --seed-file seed.txt --run-dir rfr/<run-id>   # sealed/faults.json (planted fault names stay sealed)
 fth run --run-dir rfr/<run-id> --manifest manifest.json \
         --plan CuriosityReference/FramTester/test/int/plan.json \
         --bench CuriosityReference/FramTester/test/int/bench.json \
@@ -107,6 +107,6 @@ fth vectors  <fprime-testing-harness>/vectors               # gate: each vector 
 ## History
 
 The pass-1/2 harness (`CuriosityReference/test/system/runner.py`, `faults.py`) drove the same
-procedures with hand-coded knob hooks; it was retired in favour of this directory plus the tooling
+procedures with hand-coded planted fault hooks; it was retired in favour of this directory plus the tooling
 repo (commit "harness: retire runner.py/faults.py in favour of fprime-testing-harness").
 `test/system/` keeps `bench.sh`, `export.py` and `checker.py` (the frozen independent checker).
