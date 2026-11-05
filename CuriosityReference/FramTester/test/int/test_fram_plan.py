@@ -17,7 +17,7 @@ the unseal and the VnV matrix refer to: keep them stable.
 - ``@pytest.mark.req(...)`` carries the requirements the plan test covers (VnV matrix).
 
 ``plan.json`` beside this file keeps the windows, metrics, requirement list and the planted-fault
-menu (bodies in ``plan_helpers.py``); ``send(name, args)`` lets the drawn planted fault rewrite or
+menu (bodies in ``planted_faults.py``); ``send(name, args)`` lets the drawn planted fault rewrite or
 insert commands for *this* test only.
 """
 import pytest
@@ -49,7 +49,7 @@ def raw(send, bench, op, client, offset, length):
     bench.wait_event("framTester.RequestReturned")
 
 
-# ---- check functions beyond the plan grammar (formerly plan_helpers.py @helper predicates) ----
+# ---- check functions beyond the plan grammar (formerly planted_faults.py @helper predicates) ----
 
 def xorshift32_byte(seed, offset, i):
     """Normative pattern byte i of (seed, offset): one xorshift32 iteration of seed ^ (offset+i)."""

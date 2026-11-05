@@ -56,7 +56,7 @@
       "event framTester.CommandRejected count == 0"
     ]
   },
-  "helpers_module": "plan_helpers.py",
+  "helpers_module": "planted_faults.py",
   "helpers": [
     {
       "instance": "framTester",

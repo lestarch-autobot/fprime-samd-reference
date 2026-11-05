@@ -2,7 +2,7 @@
   "name": "QUAL-FRAM — Fram.FramDriver on CuriosityReference",
   "uut": "Fram.FramDriver (fprime-community/fprime-devices)",
   "deployment": "CuriosityReference (fprime-samd-reference) with harness component framTester",
-  "helpers_module": "plan_helpers.py",
+  "helpers_module": "planted_faults.py",
   "req_prefix": "REQ-FramDriver-",
   "markers": {
     "command": "framTester.MARK",
