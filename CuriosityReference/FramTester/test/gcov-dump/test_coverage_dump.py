@@ -7,8 +7,12 @@ CHUNKS_PER_COMMAND = 2   # two CoverageChunk events (~55 B each) fit one 128-byt
 COMMANDS = 160           # 320 chunks = 10 KiB window, past the ~6 KiB the two objects produce
 
 
-def test_COV_1(window, send, bench):
+def test_COV_1(window, check, send, bench):
     with window(900, 901):
+        check("event framTester.CoverageObject(object=0) count == 1")
+        check("event framTester.CoverageObject(object=1) count == 1")
+        check("event framTester.CoverageObject(object=1) precedes event framTester.CoverageDumpDone")
+        check("commands_sent == 162")
         bench.wait_samples(FRAM_SAMPLE, 2)
         for i in range(COMMANDS):
             send("framTester.DUMP_COVERAGE", [i * CHUNKS_PER_COMMAND, CHUNKS_PER_COMMAND])
