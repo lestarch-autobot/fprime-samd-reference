@@ -49,7 +49,7 @@ def raw(send, bench, op, client, offset, length):
     bench.wait_event("framTester.RequestReturned")
 
 
-# ---- check functions beyond the plan grammar (formerly planted_faults.py @helper predicates) ----
+# ---- check functions beyond the plan grammar (formerly plan_helpers.py @helper predicates) ----
 
 def xorshift32_byte(seed, offset, i):
     """Normative pattern byte i of (seed, offset): one xorshift32 iteration of seed ^ (offset+i)."""
