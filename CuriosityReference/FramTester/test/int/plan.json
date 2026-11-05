@@ -284,6 +284,19 @@
     "- No evidence path independent of the UUT's SPI read exists on this bench: the F-RAM is reachable only through the SAMD21. L7-1's dump travels through `framDriver.read`; its independence rests on the generator/seed being the auditor's and on L6-1 proving the verifier can fail. Human to confirm (§8 #4) or choose a strengthening: (i) a raw 9-byte `DeviceId` channel compared against the datasheet constant (reopens design: Table 3), (ii) a Pi-side read of the device with the MCU in `reset halt`, if the SPI lines are exposed.",
     "- Endurance (L4): none planned — the F-RAM has 10^14 cycles endurance (datasheet); a sweep is the performance test."
   ],
+  "coverage": {
+    "ut": {
+      "lines_min": 95
+    },
+    "system": {
+      "lines_min": 75
+    },
+    "not_covered_ack": [
+      "FramDriver error branches for bus-level faults (SPI NAK, timeout) are reachable on the bench only by breaking the wiring, which the test-as-you-fly rule forbids; they are covered by unit tests.",
+      "FramTester command-dispatch defaults (unknown opcode paths) are generated code, exercised by the framework's own tests."
+    ],
+    "rationale": "Set at design review per the planner: UT lines >= 95 % (100 % where practical) because the host build can force every error branch; on-target 75 % baseline because system-caused error branches cannot be forced without breaking test-as-you-fly. Branches are reported, not thresholded: the compiler inserts hidden branches (gcovr excludes throw/unreachable branches on the on-target report)."
+  },
   "decision_log": [
     "1. 2026-10-29 designer — deployment = CuriosityReference minus I2C (human's stated reduction) plus the additions of §0's delta table (designer's; gate confirms, #7). It is a test deployment in the contract's sense.",
     "2. 2026-10-29 designer — marker = `framTester.MARK(U32)` → `Marker(id)` event (no CMD_NO_OP_STRING, string max 2 chars); needs line (4) to the human.",
