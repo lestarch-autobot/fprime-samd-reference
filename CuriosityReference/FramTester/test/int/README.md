@@ -12,7 +12,7 @@ as regression vectors, each with a labelled copy of this plan under `vectors/pla
 | what | file (here) |
 |---|---|
 | plan: tests, windows, procedures, metrics, requirements, planted-fault menu source, decision log — **no pass rules**: the named checks live in the test functions (phase 1) | `plan.json` (`plan.md` is rendered from it: `fth render-plan plan.json`, never hand-edited) |
-| planted-fault bodies (`@planted_fault`; their `fails` lists name checks verbatim) | `plan_helpers.py` (named by `plan.json` `helpers_module`) |
+| planted-fault bodies (`@planted_fault`; their `fails` lists name checks verbatim) | `planted_faults.py` (named by `plan.json` `helpers_module`) |
 | generated fault menu | `faults-menu.json` (`fth planted-faults-menu plan.json`, never hand-edited) |
 | bench command lines (OpenOCD, GDS, recorder, sender) | `bench.json` |
 | integration tests, one per plan id: stimulus inside `with window(...)`, named checks `check("<name>")`, infrastructure preconditions `require(...)`, `@pytest.mark.req(...)`; the former helper predicates are check functions here | `test_fram_plan.py` |
@@ -52,7 +52,10 @@ difference is a DIVERGENCE finding. A judged FAIL stands whatever else happens o
 are raised together at the test's last window; a window without a `check(...)` can never PASS.
 
 Planted faults are applied by the `send` fixture from the sealed draw (`<run>/sealed/faults.json`) to the
-drawn test **only**; the test bodies do not know whether a planted fault is active.
+drawn test **only**; the test bodies do not know whether a planted fault is active (no fixture exposes the draw;
+`fth verify-plan --tests` refuses a test file that names `faults`, `_fth_faults`, `sealed` or `__self__`).
+Development only: `pytest … --fth-plant L5-1=busy_skip` or `fth run --unsealed --plant L5-1=busy_skip` plants a
+fault without a draw — refused on a drawn run dir, and the verdicts carry `dev_plant` so the record is never RfR.
 
 ## Running
 

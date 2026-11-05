@@ -2,7 +2,7 @@
 """Independent checker for the 12 FRAM plan tests (ADV-A, belt-and-suspenders).
 
 Written from the plan TEXT (``aux/plan.md``) and the replay API (``docs/replay-api.md``,
-``fth.replay``) only.  ``fth/engine.py``, ``plan_helpers.py``, the predicate
+``fth.replay``) only.  ``fth/engine.py``, ``planted_faults.py``, the predicate
 sections of ``plan.json`` and ``tests/test_engine_grammar.py`` were NOT read.
 ``plan.json`` is opened only for data: marker names, ``event_patterns`` and each test's
 window marker ids.
