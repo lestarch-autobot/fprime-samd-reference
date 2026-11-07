@@ -156,7 +156,7 @@ def test_L0_2(window, send, bench, check, require):
 # ---- L2: write / read-back -------------------------------------------------------------
 
 @pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002", "REQ-FramDriver-003", "REQ-FramDriver-004",
-                 "REQ-FramDriver-005", "REQ-FramDriver-011", "REQ-FramDriver-020")
+                 "REQ-FramDriver-005", "REQ-FramDriver-011")
 def test_L2_1(window, send, bench, check, require):
     with window(30, 31):
         require(STD)
@@ -179,7 +179,7 @@ def test_L2_1(window, send, bench, check, require):
         check("event framDriver.SpiError count == 0")
 
 
-@pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002", "REQ-FramDriver-006", "REQ-FramDriver-008", "REQ-FramDriver-020")
+@pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002", "REQ-FramDriver-006", "REQ-FramDriver-008")
 def test_L2_2(window, send, bench, check, require):
     with window(40, 41):
         require(STD)
@@ -221,7 +221,7 @@ def test_L2_3(window, send, bench, check, require):
         check("delta(framDriver.WritesCompleted) == 1")
 
 
-@pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002", "REQ-FramDriver-010", "REQ-FramDriver-020")
+@pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002", "REQ-FramDriver-010")
 def test_L2_5(window, send, bench, check, require):
     with window(60, 61):
         require(STD)
@@ -283,7 +283,7 @@ def _retention(window, send, bench, check, require, w1, offset, length, seed):
               last_less_than_other_window("rg8Hz.CycleCount", "W1"))
 
 
-@pytest.mark.req("REQ-FramDriver-023", "REQ-FramDriver-012", "REQ-FramDriver-015", "REQ-FramDriver-016", "REQ-FramDriver-020")
+@pytest.mark.req("REQ-FramDriver-023", "REQ-FramDriver-012", "REQ-FramDriver-015", "REQ-FramDriver-016")
 def test_L3_1(window, send, bench, check, require):
     _retention(window, send, bench, check, require, 70, 0x020000, 64, 0x7007)
 
@@ -375,7 +375,7 @@ def test_L6_1(window, send, bench, check, require):
 
 # ---- L7: final image ---------------------------------------------------------------------
 
-@pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002", "REQ-FramDriver-020")
+@pytest.mark.req("REQ-FramDriver-001", "REQ-FramDriver-002")
 def test_L7_1(window, send, bench, check, require):
     with window(120, 121):
         require(STD)
