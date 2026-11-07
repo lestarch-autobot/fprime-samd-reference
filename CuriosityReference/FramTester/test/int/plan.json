@@ -207,22 +207,6 @@
       "verification": "Inspection (entry gate)",
       "note": ""
     },
-    "REQ-FramDriver-019": {
-      "tests": [],
-      "verification": "Inspection (entry gate: library build without fprime-samd)",
-      "note": ""
-    },
-    "REQ-FramDriver-020": {
-      "tests": [
-        "L2-1",
-        "L2-2",
-        "L2-5",
-        "L3-1",
-        "L7-1"
-      ],
-      "verification": "L2-1, L2-2, L2-5, L3-1, L7-1",
-      "note": ""
-    },
     "REQ-FramDriver-021": {
       "tests": [],
       "verification": "UT only",
@@ -259,7 +243,7 @@
     "- Out of scope on this bench: SPI fault injection (REQ-009, REQ-014, REQ-021's non-BUSY cases), block-protect (REQ-022) and device-ID mismatch (REQ-013) — no second device, bus fault or protected part; REQ-021's SPI_BUSY_ERR case is plantable in principle (W2, §8 #6) but not attempted in this plan; verified by unit test; see §7."
   ],
   "entry_gates": [
-    "- Stage-1 close: `fprime-util check` on `Fram/Components/FramDriver` passes with every row of the SDD unit-test list implemented (REQ-018/019 by inspection: no thread, no queue, no fprime-samd dependency in the library build).",
+    "- Stage-1 close: `fprime-util check` on `Fram/Components/FramDriver` passes with every row of the SDD unit-test list implemented (REQ-018 by inspection: no thread, no queue; the library build without fprime-samd is checked as well, no longer cited as a requirement).",
     "- Image: `CuriosityReference` built from the manifest SHAs (fprime-devices, fprime-samd ≥ 056d4d3, fprime-samd-reference, harness), flashed by OpenOCD with read-back verify (`raw/flash.log`); dictionary from that build copied to the Pi.",
     "- Marker round-trip: `framTester.MARK(0xA5A5)` echoed as `Marker(id=0xA5A5)` once (L0-2) — replaces the contract's `NO_OP_STRING` marker because `Samd21.StaticCmdDispatcher` has no `CMD_NO_OP_STRING` and `FW_LOG_STRING_MAX_SIZE = 2` on this deployment (decision log #2).",
     "- Run-start markers (contract §4 `RFR <run> M/S <sha8>`, string path closed): the runner sends `MARK(0xFFFF0001); MARK(<manifest sha8 as U32>); MARK(0xFFFF0002); MARK(<seal-id sha8 as U32>); MARK(0xFFFF0003); MARK(crc32(<run id>))` before L0-1; ids ≥ 0xFFFF0000 are reserved and never used as test markers. Dry runs carry sha8 = 00000000. The sha8 / crc32 values are arbitrary U32s that share the `Marker(id)` space with the test markers (25 values in 2³²): a collision would place a stray `Marker(id=START/END)` before L0-1, which the §3 window rule tolerates (an END with no START before it is skipped; the START used is the last one before its END) — this reasoning is why the window rule must keep that form. `seal.py unseal` must read this `Marker(id=…)` encoding (stage-3 tooling item, #14).",
@@ -323,7 +307,8 @@
     "22. 2026-11-02 developer — fram-r2 predates L3-2/L5-4: both read UNVERIFIED (markers absent) on that record; the 12 original verdicts are unchanged and `vectors/fram-r2/expected-verdicts.json` carries the two new rows.",
     "23. 2026-11-02 developer — planted fault declarations fixed to the fixture's command spelling (`framTester.X`, as `send()` sees it) and scoped to the named test only; `busy_skip` rewrites BURST mode to `SEQUENTIAL` (the FPP enum; `AFTER_COMPLETION` does not exist); `corrupt_block` on L3-1 is issued after MARK(71), before the reset (rewrites the MARK(71) send into MARK(71) + WRITE_PATTERN(1, 0x020000, 64, 0x700E)), matching the retired runner.",
     "24. 2026-11-02 developer — REQ-001/002 were covered by L2-1 and L2-5 only, whose planted fault sets both contain `verify_wrong_seed` (not disjoint; a verify_wrong_seed draw plus a corrupt_block/short_sweep draw could alter both). L2-3 (planted fault-free, WRITE_PATTERN then READ_VERIFY from both clients with mismatches=0) now also covers REQ-001 and REQ-002; no new predicates needed.",
-    "25. 2026-11-03 anchor (review iter-4, ADV-E) — corrupt_block's L3-1 branch keyed on the marker command, which the plugin never hands to a planted fault (a draw of corrupt_block on L3-1 planted nothing): re-keyed on L3-1's WRITE_PATTERN (corrupting write inserted inside W1, before the reset). L2-3's seed changed 0x3003 → 0x3005 so L2-3 and L3-2 no longer write the identical block (a no-op write could otherwise pass on a non-volatile part from run 2 on). Helper window_in_later_boot (unused since decision 21's L3-2 redesign) retired; dump_image_matches_xorshift32 fails on duplicate DumpData offsets. Takes effect at the next bench run; records before it show L2-3's old seed as a §2 observation."
+    "25. 2026-11-03 anchor (review iter-4, ADV-E) — corrupt_block's L3-1 branch keyed on the marker command, which the plugin never hands to a planted fault (a draw of corrupt_block on L3-1 planted nothing): re-keyed on L3-1's WRITE_PATTERN (corrupting write inserted inside W1, before the reset). L2-3's seed changed 0x3003 → 0x3005 so L2-3 and L3-2 no longer write the identical block (a no-op write could otherwise pass on a non-volatile part from run 2 on). Helper window_in_later_boot (unused since decision 21's L3-2 redesign) retired; dump_image_matches_xorshift32 fails on duplicate DumpData offsets. Takes effect at the next bench run; records before it show L2-3's old seed as a §2 observation.",
+    "27. 2026-11-06 human gate (Michael Starch) — REQ-FramDriver-019/020 dropped from this plan (S-1: cited here and in the SDD Tests table, never rows of the approved `## Requirements` table; \"Drop 019/020 from plan.json instead\"). L2-1/L2-2/L2-5/L3-1/L7-1 keep the table requirements they verify (001/002 read-write path, 003/004/005/006/008/010/011/012/015/016/023 as listed); no test lost its last requirement. `image_version` recorded as waived for the SAMD21 (\"This exception is fine for the SAMD21, but where Version is available it may be used\"); `fth verify-plan --sdd` is the standing check."
   ],
   "tests": [
     {
@@ -402,8 +387,7 @@
         "REQ-FramDriver-003",
         "REQ-FramDriver-004",
         "REQ-FramDriver-005",
-        "REQ-FramDriver-011",
-        "REQ-FramDriver-020"
+        "REQ-FramDriver-011"
       ],
       "covers_note": "",
       "setup": "L0-1 passed.",
@@ -439,8 +423,7 @@
         "REQ-FramDriver-001",
         "REQ-FramDriver-002",
         "REQ-FramDriver-006",
-        "REQ-FramDriver-008",
-        "REQ-FramDriver-020"
+        "REQ-FramDriver-008"
       ],
       "covers_note": "",
       "setup": "L2-1 passed.",
@@ -516,8 +499,7 @@
       "covers": [
         "REQ-FramDriver-001",
         "REQ-FramDriver-002",
-        "REQ-FramDriver-010",
-        "REQ-FramDriver-020"
+        "REQ-FramDriver-010"
       ],
       "covers_note": "",
       "setup": "L2-1 passed.",
@@ -565,8 +547,7 @@
         "REQ-FramDriver-023",
         "REQ-FramDriver-012",
         "REQ-FramDriver-015",
-        "REQ-FramDriver-016",
-        "REQ-FramDriver-020"
+        "REQ-FramDriver-016"
       ],
       "covers_note": "",
       "setup": "L2-1 passed. GDS events listener attached before the reset.",
@@ -873,8 +854,7 @@
       "purpose": "Leaves a known image in the last 256 bytes and dumps it so the auditor can regenerate and compare it independently.",
       "covers": [
         "REQ-FramDriver-001",
-        "REQ-FramDriver-002",
-        "REQ-FramDriver-020"
+        "REQ-FramDriver-002"
       ],
       "covers_note": "",
       "setup": "All other tests done.",
@@ -904,5 +884,9 @@
       ],
       "evidence": "32 DumpData events whose 256 bytes equal the auditor's regenerated image."
     }
-  ]
+  ],
+  "image_version": {
+    "policy": "waived",
+    "reason": "CuriosityReference (SAMD21) has no Svc.Version instance: image identity is the manifest sha256 + deliver's rebuild proof + the dictionary describe-string check + the OpenOCD flash read-back; Captain ruling 2026-11-06: the exception is fine for the SAMD21, where Svc.Version is available the check is required."
+  }
 }
