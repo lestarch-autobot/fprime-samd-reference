@@ -2,7 +2,7 @@
 constant FW_CONSOLE_HANDLE_MAX_SIZE = 24
 
 @ Maximum size of a handle for Os::Task
-constant FW_TASK_HANDLE_MAX_SIZE = 40
+constant FW_TASK_HANDLE_MAX_SIZE = 64
 
 @ Maximum size of a handle for Os::File
 constant FW_FILE_HANDLE_MAX_SIZE = 16
